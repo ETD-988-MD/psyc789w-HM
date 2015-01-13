@@ -1,0 +1,70 @@
+---
+title: "Day 6 Homework"
+author: Eric Dunford - PSYC 789W
+output: html_document
+---
+```{r,echo=F,message=FALSE}
+#Data
+setwd("~/Dropbox/Coursework/Winter 2015/PSYC798W -R_Programming")
+data <- read.csv("Data/NAVCO_2.0.csv")
+
+#packages
+library(plyr)
+```
+
+#### 1. Think carefully about your data.  Think about something you would like to do multiple times, to subsets of your data.  
+
+It would be convenient to have a "duration" variable that captures the number of years that a movement lasted for (i.e. if a movement occured from 1992 to 1995, some variable that noted that the campaign lasted 4 years). 
+
+That said, since the data is time series, it might be better to have a counter variable that marks how long the movement has been in teh dataset (if 1992 as the first year in the DF then the counter == 0, 1993 == 1, 1994 == 2; 1995 == 3)
+
+#### 2. Write out (in plain English, in the notebook) what you are trying to do
+
+For the first year that _this movement_ enters the DF, start counting. For each additional year, add one. Stop counting when the movement exits the data frame. 
+
+#### 3. Write some "pseudo-code" comments in an R chunk, as an outline
+
+#### 4. Write some (real) code that will do what you want ONCE, on one subset of the data.
+
+```{r}
+#First, arrange the data so the years are in order
+data <- arrange(data,data$year); data <- arrange(data,data$campaign)
+
+data.sub <- data[data$campaign=="UNITA",] 
+years <- data[data$campaign=="UNITA","year"] 
+min.year <- min(years)
+duration <- years - min.year
+duration #Bingo
+```
+
+#### 5. Copy that code chunk, and convert it into a loop, which will do what you want over all the groups, concatenating the results.
+
+```{r}
+campaigns <- data$campaign #Vector of all the campaigns
+data$duration <- NA #container
+
+for(i in 1:length(campaigns)){
+  years <- data[data$campaign==campaigns[i],"year"] 
+  min.year <- min(years)
+  data$duration[data$campaign==campaigns[i]] <- years - min.year
+}
+head(data[data$campaign=="UNITA",c("year","duration")],10) # Great!
+```
+
+
+#### 6. Copy that loop again, and at a condition (`if`) statement to add some further control about ignoring some groups or some other conditional operation.
+```{r}
+
+for(i in 1:length(campaigns)){
+  years <- data[data$campaign==campaigns[i],"year"] 
+  min.year <- min(years)
+  if(min.year >= 1980){ #Here is the conditional only capturing movements that emerged from 1980 onward
+  data$duration[data$campaign==campaigns[i]] <- years - min.year
+  } else data$duration[data$campaign==campaigns[i]] <- NA
+}
+head(data[data$campaign=="Active Forces",c("campaign","year","duration")],3) #This Movement started in 1991 
+head(data[data$campaign=="Afghan Resistance",c("campaign","year","duration")],3) #This one in 1979 
+#Success!
+```
+
+

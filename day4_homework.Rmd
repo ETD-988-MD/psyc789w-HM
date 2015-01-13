@@ -1,0 +1,226 @@
+---
+title: "Day 4 Homework"
+author: "Eric Dunford - PSYC 789W - Winter 2015"
+output: html_document
+---
+Date: `r Sys.Date()`
+
+```{r, echo=F}
+setwd("~/Dropbox/Coursework/Winter 2015/PSYC798W -R_Programming")
+data <- read.csv("Data/NAVCO_2.0.csv")
+# install.packages(
+#   'printr',
+#   type = 'source',
+#   repos = c('http://yihui.name/xran', 'http://cran.rstudio.com')
+# )
+#library(printr)
+```
+
+#### 1. Change the column names of your data to something easier to work with.  If you like your column names, change them into something else reasonable, just for practice.
+```{r}
+colnames(data)
+```
+
+Changing the diversity indicators to shorter names.
+
+```{r}
+colnames(data)[17:24]
+mycols <- c("age","class","urban.rural","ideology","pol.party","regional","ethnicity","religion")
+colnames(data)[17:24] <- mycols
+colnames(data)[17:24]
+```
+
+#### 2. List ALL the issues you can see where it looks like your data is being read in a weird way.  If your data looks perfect, find some way to mess it up :-)
+
+```{r,eval=F}
+summary(data)
+```
+
+There aren't any issues that immediately stand out. First, the "X" variable is some weird excel by-product. Let's get rid of it.
+```{r}
+head(data[1]) #the var appears to just be a count
+data["X"] <- NULL
+colnames(data[1:5])
+```
+
+In addition to this, it appears that the `ID` variable is operating as a numeric and not a factor.
+
+```{r}
+class(data$id)
+data$id <- as.factor(data$id)
+class(data$id)
+```
+
+The main issue with the data is that (like all polisci datasets) there are outstanding theoretical and measurement issues that are more statistical issues than they are R issues. 
+
+#### 3. Pick one or two of the most egregious or problematic of the issues in #2 and fix them.
+
+Opps. Jump ahead on that one. See problem 2.
+
+#### 4. Check for NAs, and report where you see them (try to pinpoint where they are, not just "5 NAs in column seven".
+
+There are a wealth of NAs in this data.frame. Rather than point them all out, I will create a subset of the variables of most interest to me and examine the NAs within the subset.
+
+```{r}
+sub <- data[,c("year","campaign","location","camp_size","pi_newmedia","pi_tradmedia","camp_support","ingo_support","prim_method")]
+head(sub,3)
+```
+
+Good. Now that we have the data paired down, let's specify the number of NAs for each variable.
+
+* `r colnames(sub)[4]` == `r summary(is.na(sub$camp_size))[[3]]` NAs. 
+* `r colnames(sub)[5]` == `r summary(is.na(sub$pi_newmedia))[[3]]` NAs. 
+* `r colnames(sub)[6]` == `r summary(is.na(sub$pi_tradmedia))[[3]]` NAs. 
+* `r colnames(sub)[7]` == `r summary(is.na(sub$camp_support))[[3]]` NAs. 
+* `r colnames(sub)[8]` == `r summary(is.na(sub$ingo_support))[[3]]` NAs. 
+* `r colnames(sub)[9]` == `r summary(is.na(sub$prim_method))[[3]]` NAs. 
+
+Let's look at Just the NAs for the Campaign Support variable, and see if the issue is inherent to the data or due to an import issue. 
+```{r}
+head(subset(sub,is.na(sub$camp_support)))
+```
+
+Look's like the issue isn't an import one, the NAs appear to be function of the data generating process.
+
+#### 5. Decide what you think you should do about the NAs, and say why.  If you can, try to implement this decision.
+
+Given what this data is measuring, NAs are arguably equivalent to zeros in the dataset - in that I am concern when these events were observed. If the event was not observed (0) or if the researcher was unable to find evidence of the event (NA), they both equal out to the same thing in the analysis. 
+
+Thus, I will transform all NAs to 0s. 
+
+```{r,echo=F}
+cols <- colnames(sub)
+cols <- cols[4:9]
+```
+
+For `r cols[1]` var
+```{r}
+table(sub$camp_size,useNA="ifany")
+sub$camp_size[is.na(sub$camp_size)] = 0
+table(sub$camp_size,useNA="ifany")
+```
+
+Good - Now, Let's Speed the Process up. 
+```{r}
+# First ... a reference
+table(sub[5],useNA="ifany")
+table(sub[6],useNA="ifany")
+table(sub[7],useNA="ifany")
+table(sub[8],useNA="ifany")
+
+for(i in 5:9){
+  sub[i][is.na(sub[i])] = 0
+}
+
+table(sub[5],useNA="ifany")
+table(sub[6],useNA="ifany")
+table(sub[7],useNA="ifany")
+table(sub[8],useNA="ifany")
+```
+
+#### 6. Remove any problematic rows and/or columns.  Say why you want to remove them.  If there aren't any problems, describe why you think there are no problems.
+
+As of now, there aren't any outstanding issues with the data. However, political science datasets are notoriously difficult to merge with other dataset due (most often) to small conventional changes in country name spelling or issues of case sensitivity. It would help to have a code that is the same across datasets to ease the merging process. Luckily, a few political science R users came up with the next best thing. 
+
+The `countrycode()` package takes a vector of country names and then translates them into whatever conventional coding scheme the programmer needs. Here I will use the correlates of war (cow) country code. 
+
+```{r}
+require(countrycode)
+sub$cowc <- countrycode(sub$location,"country.name","cowc")
+head(sub,2) 
+```
+
+Great! This will make merging easier down the road (i.e. now I can merge by cowc and year).
+
+#### 7. Re-code at least one factor.  Provide a table that shows the correspondence between old levels and new levels.
+
+There aren't any factors that are available for this exercise (except country names or campaign names). So, for the sake of the exercise, I will create a new factor variable based off the two media variables (pi_tradmedia & pi_newmedia).
+
+```{r}
+sub$media.tactics <- ifelse(sub$pi_tradmedia==1&sub$pi_newmedia==1,"Comprehensive",
+                            ifelse(sub$pi_tradmedia==1&sub$pi_newmedia==0,"Traditional",
+                                   ifelse(sub$pi_tradmedia==0&sub$pi_newmedia==1,"New",
+                                          ifelse(sub$pi_tradmedia==0&sub$pi_newmedia==0,"None",NA))))
+table(sub$media.tactics,useNA="ifany")
+class(sub$media.tactics)
+sub$media.tactics <- as.factor(sub$media.tactics)
+class(sub$media.tactics)
+```
+
+First, let's reorder the factor levels
+```{r}
+levels(sub$media.tactics)
+sub$media.tactics <- factor(sub$media.tactics,levels = c("Comprehensive","Traditional","New","None"))
+levels(sub$media.tactics)
+table(sub$media.tactics,useNA="ifany")
+```
+
+And then rename
+```{r}
+levels(sub$media.tactics) <- c("Comprehensive Use of New and Old Media","Only Uses Traditional Media Outlets", "Only Uses Social Media Outlets", "Does Not Tactically Employ Media")
+levels(sub$media.tactics)
+table(sub$media.tactics,useNA="ifany")
+```
+
+#### 8. Run TWO DIFFERENT simple analyses or statistical tests, such as linear regression (`lm()`), logistic regression (`glm()`), correlation test (`cor.test()`), t-test (`t.test()`), or non-parametric tests (e.g., `wilcox.test()`).  For each of these:
+  - Describe why you are doing this analysis, i.e., what question is it answering?
+  - I won't judge you on statistical expertise!  (though I will make comments if I think I can be helpful)
+  - Report some key statistics from the analysis, using inline code
+
+**First Analysis**:
+
+  - Question: Do movements that tactically use the media attract more International NGO support than movements that do not?
+  - Note: there are a wealth of control variables that need to be included in this analysis; however, for now, I will keep the analysis simple (using only 2 IV varaibles) utilizing a probit regression analysis for the sake of the exercise.^[I am utilizing Probit here since the DV is binary.]
+
+Model: 
+
+$pr(International NGO Support = 1 | Media Usage) = \beta_0 + \beta_1(pi\_newmedia) + \beta_2(pi\_tradmedia) + \epsilon$
+
+```{r}
+model1 <- glm(ingo_support~pi_newmedia+pi_tradmedia,data=sub,family=binomial(link="probit"))
+results <- summary(model1)
+
+```
+
+Little can be discerned from the output alone w/r/t substantive significance of the findings (we would need to calculate the predictive probabilities when assessing discrete changes in the variables of interest). That said, we can say a few things about the direction and statistical significance of the coefficients. 
+
+Movements that tactically employ new media have a positive effect (the coefficient on the new media variable is `r round(results$coefficients[2],3)`) on the likelihood of observing NGO support within the data. These results are statistically significant at conventional levels (p-value = `r round(results$coefficients[2,4],7)`).
+
+Movements that tactically employ traditional media outlet have a positive effect (the coefficient on the new media variable is `r round(results$coefficients[3],3)`) on the likelihood of observing NGO support within the data. These results are statistically significant at conventional levels (p-value = `r round(results$coefficients[3,4],7)`).
+
+When movements use neither new or traditional media outlets to get their message out, there is a negative effect on the likelihood of observing NGO support within the data (i.e. when `pi_newmedia = 0` and `pi_tradmedia = 0`, the intercept is `r round(results$coefficients[1],3)`). These results are statistically significant at conventional levels (p-value = `r results$coefficients[1,4]`).
+
+Conclusion: How (or if) a movement utilizes media matters with regard to its ability to attract NGO support.
+
+Here is the model's output for reference.
+```{r,echo=F}
+results
+```
+
+
+**Second Analysis**:
+
+Similar to the first analysis...
+
+  - Question: Do movements that tactically use the media attract more external state support than movements that do not?
+  - Again - controls are needed here; however, I will keep the analysis simple for now
+
+Model: 
+
+$pr(External State Support = 1 | Media Usage) = \beta_0 + \beta_1(pi\_newmedia) + \beta_2(pi\_tradmedia) + \epsilon$
+
+```{r}
+model2 <- glm(camp_support~pi_newmedia+pi_tradmedia,data=sub,family=binomial(link="probit"))
+results2 <- summary(model2)
+```
+
+Movements that tactically employ new media have a negative effect (the coefficient on the new media variable is `r round(results2$coefficients[2],3)`) on the likelihood of observing NGO support within the data. These results are statistically significant at conventional levels (p-value = `r round(results2$coefficients[2,4],7)`).
+
+Movements that tactically employ traditional media outlet have a positive effect (the coefficient on the new media variable is `r round(results2$coefficients[3],3)`) on the likelihood of observing NGO support within the data. These results are statistically significant at conventional levels (p-value = `r round(results2$coefficients[3,4],7)`).
+
+When movements use neither new or traditional media outlets to get their message out, there is a negative effect on the likelihood of observing NGO support within the data (i.e. when `pi_newmedia = 0` and `pi_tradmedia = 0`, the intercept is `r round(results2$coefficients[1],3)`). These results are statistically significant at conventional levels (p-value = `r results2$coefficients[1,4]`).
+
+Conclusion: Which kind of media a movement tacitcally employts matters with regard to its ability to attract external state support. 
+
+  
+  

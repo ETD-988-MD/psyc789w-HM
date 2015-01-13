@@ -1,0 +1,124 @@
+---
+title: "Day 3 Homework"
+author: Eric Dunford - PSYC 789W - Winter 2015
+output: html_document
+---
+Date: `r Sys.Date()`
+
+```{r, echo=F}
+#Read data in.
+setwd("~/Dropbox/Coursework/Winter 2015/PSYC798W -R_Programming")
+data <- read.csv("Data/NAVCO_2.0.csv") 
+```
+
+The goal of this homework is to get practice with manipulating data.^[Note that the data used here is consistent with what I sent you for Day2 HM.]
+
+#### 1. Make both a "wide" and a "long" version of your data
+
+First, given the number of variables in my data, I will create a subset of relevant variables. 
+
+```{r}
+sub <- data[,c("year","campaign","location","camp_size","pi_newmedia","pi_tradmedia","camp_support","ingo_support","prim_method")]
+head(sub)
+```
+
+The data is already in a 'wide' form. Let's melt it into a *long*er format. 
+
+```{r}
+require(reshape2)
+sub.melt <- melt(sub,id.vars = c("campaign","location","year"), measure.vars = c("camp_size","pi_newmedia","pi_tradmedia","camp_support","ingo_support","prim_method"))
+head(sub.melt)
+```
+
+For the sake of the exercise, I will now cast the data back into its original form.
+
+```{r}
+sub.cast <- dcast(sub.melt, campaign+location+year~variable,value.var = "value")
+head(sub.cast) #looks good
+```
+
+#### 2. Transform a variable
+
+Let's transform the `camp_size` variable into a factor.
+
+Pulling from a quote in the NAVCO 2.0 Codebook for the `camp_size` variable.
+
+>0=1-999 1=1000-9,999 2=10,000-99,999 3=100,000-499,999 4=500,000-1million 5=>1 million -99=unknown
+
+```{r}
+sub$camp_size2 <- ifelse(sub$camp_size==0,"1-999",
+                         ifelse(sub$camp_size==1,"1000-9,999",
+                                ifelse(sub$camp_size==2,"10,000-99,999",
+                                       ifelse(sub$camp_size==3,"100,000-499,999",
+                                              ifelse(sub$camp_size==4,"500,000-1 million",
+                                                     ifelse(sub$camp_size==5,"1 million +",NA))))))
+table(sub$camp_size)
+table(sub$camp_size2)
+```
+
+The change when through but the order of the characters are odd. Let's convert the variable to a factor to set the data for question 3.
+
+```{r}
+class(sub$camp_size2)
+sub$camp_size2 <- as.factor(sub$camp_size2)
+class(sub$camp_size2)
+```
+
+
+#### 3. Recode a factor
+
+Interpreting "recode" as "reorder"...
+
+```{r}
+levels(sub$camp_size2)
+sub$camp_size2 <- factor(sub$camp_size2,levels(sub$camp_size2)[c(2,5,3,4,6,1)])
+levels(sub$camp_size2)
+```
+
+
+#### 4. Add a new factor, where the levels are conditional on the values of some other variable. E.g., a factor of "high", "medium", and "low" based on thresholds for another variable.
+
+Let's create a time period variable, capturing the following:
+
+* Cold War Period (1945-1989)
+* Post Cold War Period (1990 - 2001)
+* Post 9/11 Period (2002 - 2006^[This is when the data set ends.])
+
+```{r}
+sub$timePeriod <- ifelse(sub$year>=1945 & sub$year<=1989,"Cold War Period",
+                         ifelse(sub$year>=1990 & sub$year<=2001,"Post Cold War Period",
+                                ifelse(sub$year>=2002,"Post 9/11 Period",NA)))
+table(sub$timePeriod)
+class(sub$timePeriod)
+#following with the question
+sub$timePeriod <- as.factor(sub$timePeriod)
+class(sub$timePeriod)
+```
+
+#### 5. Reorder the levels of this new factor
+
+```{r}
+levels(sub$timePeriod)
+```
+
+Let's reorder it so that the periods are chronological.
+
+```{r}
+sub$timePeriod <- factor(sub$timePeriod,levels=c("Cold War Period","Post Cold War Period","Post 9/11 Period"))
+levels(sub$timePeriod)
+```
+
+#### 6. Choose a factor that could be re-coded as multiple dimensions (recall the sepal/petal vs. length/width breakdown). If you don't have one, try to create one.  Now create two (or more) new factors that represent these dimensions.
+
+There isn't really a great variable on hand within the subset to really do what the question is asking for. In addition to this, I tried playing around with ways of generating fake variables that never really panned out.
+
+#### 7. Using `dcast`, aggregate some variable into "cell means" of some kind.
+
+Using the `sub.melt` object I generated above
+
+```{r}
+sub.cast2 <- dcast(sub.melt, campaign~variable,mean)
+head(sub.cast2)
+```
+
+#### 8.  Save all of the above in a well-documented R Markdown document.  Email me the .Rmd file (and if you use different or updated data from Day 2 Homework, send that to me, too).

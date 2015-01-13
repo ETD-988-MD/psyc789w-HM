@@ -1,0 +1,186 @@
+---
+title: "Day 5 Homework"
+author: Eric Dunford - PSYC 789W
+output: html_document
+---
+Date: `r format(Sys.Date(),"%m/%d/%y")`
+
+#### 0. Start out by getting your data into "long" format.  This will help with some of the following.
+
+Since the data I've been using for the homework is primarily composed of dichotomous indicators; I will use data inherent to R for this exercise. 
+
+**ChickWeight (Weight versus age of chicks on different diets)**
+```{r}
+data <- ChickWeight
+head(data)
+```
+
+Converting to long format
+```{r}
+require(reshape2)
+data.melt <- melt(data,id.vars =c("Chick"))
+head(data.melt)
+```
+
+
+#### 1. Pick a single numerical variable from your data.  Use `ggplot` to plot a histogram and a density plot (separately).
+   - Try some different values for `binwidth` for the histogram.
+   - Try some different values for `adjust` for the density plot.
+
+```{r}
+library(ggplot2)
+#Histogram
+plot1a <- ggplot(data,aes(x=weight)) + geom_histogram() + theme_bw()
+plot1a
+plot1a.1 <- ggplot(data,aes(x=weight)) + geom_histogram(binwidth=3) + theme_bw()
+plot1a.1
+
+#Density Plot
+plot1b <- ggplot(data,aes(x=weight)) +geom_density() +theme_bw()
+plot1b
+plot1b.1 <- ggplot(data,aes(x=weight)) +geom_density(adjust=5) +theme_bw()
+plot1b.1
+```
+
+
+#### 2. How does the distribution look?  Try transforming the variable and try to get it to look more normal (i.e., more Gaussian).  If it already looks normal, do something to it to make it look non-normal.
+
+The plot has pronounced left skew. Let's play with its functional form to make it more normal.
+
+```{r}
+ggplot(data,aes(x=sqrt(weight))) + geom_histogram() + theme_bw()
+ggplot(data,aes(x=log(weight))) + geom_histogram() + theme_bw()
+
+plot2 <- ggplot(data,aes(x=sqrt(weight))) + geom_histogram() + theme_bw()
+```
+
+Taking the natural log produces the most Gaussian form of the distribution
+
+#### 3. Is there a factor that you can use to break up this variable into groups of observations?  If not, reshape your data so that there is, or create a factor if necessary.  Then, do the following:
+
+   1. Plot it as a density plot, mapping `color` to the factor
+   2. Same, but try using `fill` instead of `color`
+   3. Same, using `linetype` instead of `color`
+   4. Plot the data as a boxplot, with the factor as `x` and the numerical variable as `y`
+   
+For 1 - offers the different density plots of chicken weights given the different diets. 
+```{r}
+plot3a <- ggplot(data,aes(x=weight,color=Diet)) +geom_density() +theme_bw()
+plot3a
+```
+
+For 2 - Same but with fill
+```{r}
+plot3b <- ggplot(data,aes(x=weight,fill=Diet)) +geom_density() +theme_bw()
+plot3b
+```
+
+For 3 - same but with line type (this is probably the form best for publication)
+```{r}
+plot3c <- ggplot(data,aes(x=weight,linetype=Diet)) +geom_density() +theme_bw()
+plot3c
+```
+
+For 4 - Box plot
+```{r}
+plot3d <- ggplot(data,aes(x=Diet,y=weight)) + geom_boxplot() + theme_bw()
+plot3d
+```
+
+#### 4. Now let's look at breaking up a histogram across a factor.  With the same variables you used in #3:
+
+   1. Plot a histogram, but use faceting to display them, one above the other.
+   2. Try mapping the factor to `color` or `fill`, to see what that looks like.
+   3. Which one seems most useful or informative for your data, and why?
+   
+For 1 - 
+
+```{r}
+plot4a <- ggplot(data,aes(x=weight)) + geom_histogram() + theme_bw() + facet_grid(Diet~.)
+plot4a
+```
+
+For 2 - 
+
+```{r}
+plot4b <- ggplot(data,aes(x=weight,fill=Diet)) + geom_histogram() + theme_bw()
+plot4b
+```
+
+For 3 - The faceting approach is probably the most useful if you want to give the clearest picture of the distribution of each seperate diet; however, the overlapping (fill approach) is more useful to compare between distribution. One look at the above graphs tells us immediately that diet 4 yields the heaviest birds. 
+
+#### 5. Now find two numerical variables.  You may need to reshape your data.  For example, if you have one numerical variable and a "condition" factor, you could use `dcast` to spread that variable across multiple columns (one per level of the factor).  Once you have two numerical variables:
+   - Create a scatterplot, with one variable mapped to `x` and the other to `y`.
+   - Plot a "loess" smoother on top of the scatterplot
+   - Plot a regression line on top of the scatterplot (instead of the loess)
+
+Scatter of Chicken Weight over Time.
+
+```{r}
+class(data$weight)
+class(data$Time)
+plot5a <- ggplot(data,aes(x=Time,y=weight)) + geom_point() + theme_bw()
+plot5a
+```
+
+As would be expected, the chickens' weight increases over time. 
+
+Here the loess smoother
+```{r}
+plot5b <- ggplot(data,aes(x=Time,y=weight)) + geom_point() + geom_smooth(method = "loess") + theme_bw()
+plot5b
+```
+
+And here the regression line smoother
+```{r}
+plot5c <- ggplot(data,aes(x=Time,y=weight)) + geom_point() + geom_smooth(method = "lm") + theme_bw()
+plot5c
+```
+
+
+#### 6. Are there any other factors that split up the variable plotted in #5?  If so try the following:
+   
+   1. Map the factor to `color`
+   2. Facet by the factor
+
+For 1 - 
+```{r}
+plot6a <- ggplot(data,aes(x=Time,y=weight,color=Diet)) + geom_point() + geom_smooth(method = "lm") + theme_bw()
+plot6a
+```
+
+For 2 - 
+```{r}
+plot6b <- ggplot(data,aes(x=Time,y=weight)) + geom_point() + geom_smooth(method = "lm") + theme_bw() + facet_grid(Diet~.)
+plot6b
+```
+
+
+#### 7. Output all of the plots above as a single PDF.
+
+```{r,eval=F}
+pdf()
+plot1a
+plot1b
+plot2
+plot3a
+plot3b
+plot3c
+plot3d
+plot4a
+plot4d
+plot5a
+plot5b
+plot5c
+plot6a
+plot6b
+dev.off()
+```
+
+#### 8. Is there a better type of visualization for your data?  What numbers would you like to be able to visualize better?  Be as explicit as possible, and write some "pseudo-code" to ilustrate what you think you would like.
+
+Given that I used R data for this assignment, the answer to the question is no. However, for my actual data, I think an interactive heat map would be useful to look at the distribution of which countries experience maximalize movements and when (mainly as a way to visualize if there are regional patterns regarding when maximalist movements occur).
+
+#### 9. Save your Markdown document that answers all of these questions (with code) as well as your PDF, and commit them as changes to your git homework repository.  Push those changes to GitHub by Monday morning at 9am.
+
+Given that I don't think we covered pushing to github yet in class, I will turn in the assignment via email. 
