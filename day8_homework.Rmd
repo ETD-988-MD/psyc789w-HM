@@ -1,0 +1,111 @@
+---
+title: "Day 8 Homework"
+output: html_document
+---
+```{r}
+data <- read.csv("Data/NAVCO_2.0.csv")
+require(dplyr)
+require(reshape2)
+```
+
+#### 1. Try to recreate the results of Homework 6 (or your intended results) using the `dplyr` functions.
+
+In HM6, I create a loop that create a duration counter for the number of years that a movement was in the dataset. 
+
+Let's to the same thing using `dplyr`
+```{r}
+data <- data %>% arrange(year) %>% arrange(campaign) %.% group_by(campaign) %.% mutate(min.year = min(year)) %.% mutate(duration = (year-min.year)+1)
+head(select(data,year,campaign,location,min.year,duration))
+```
+
+Here I get the same producte as the loop I ran in HM6 (which blows my mind btw...this package is so neat!). I changed the results a little however from what I did in HM6. In HM6, I had the counter go from 0 to n. However, in retrospect, that doesn't make a lot of sense since an observation isn't _not_ in the dataset for that time it is counted as 0. So I changed the counter to go from 1 to n on this version. 
+
+#### 2. Find another kind of analysis/transformation/summary stat that you want to apply across multiple groups in your data. Use the functions from `reshape2` and `dplyr` to get these results.
+
+For some analysis with this dataset, the time series element isn't really necessary (in fact, sometimes the time dependency introduces more problems than it solves). Let's collpse the entire data frame so that each campaign only occupies one line and each variable is compressed along some dimension (such as the max, min, or mean).
+
+```{r}
+#Let's bring back in the original data.frame
+data <- read.csv("Data/NAVCO_2.0.csv")
+
+#Let's deal with a subset just for convenience sake
+sub <- select(data,year,campaign,location,pi_educ:pi_dispute)
+
+#Here for the sake of the exercise, I'll melt, but that might not be the best approach given the data. 
+collapse.1 = sub %.% melt(measure.vars = 4:7) %>% group_by(variable,campaign,location) %>% summarize(max = max(value,rm.na=T)) %>% dcast(campaign+location~variable,value.var = "max")
+
+head(collapse.1,3)
+
+#This returns the max for all values here. Note quite what I wanted.
+
+#Here is a probably a more appropriate way to collapse (if I'm wrong, let me know!)
+collapse.2 <- sub %>% group_by(campaign,location) %>% 
+  summarize(startyr = min(year),endyr=max(year),pi_educ=max(pi_educ),
+            pi_socwel=max(pi_socwel),pi_tradmedia=max(pi_tradmedia),
+            pi_newmedia=max(pi_newmedia),pi_police=max(pi_police),
+            pi_army=max(pi_army),pi_dispute=max(pi_dispute))
+head(collapse.2,3) #great!
+```
+
+
+#### 3. For more practice, try another example of something like #2 (find another stat or grouping or something).
+
+For 3, I would like to do something like #1 but in a more realistic fashion. So, duration (or count) variables are used in event history data to count the number of instances since an event occurred. The data typically looks like this:
+```{r}
+df <- data.frame("year"=c(1991:2000),"event"=c(0,0,1,0,0,0,0,0,1,0))
+df
+```
+
+Here the event is dichotomously coded. The duration counter works as follows
+```{r}
+df <- data.frame("year"=c(1991:2000),"event"=c(0,0,1,0,0,0,0,0,1,0),"duration"=c(2,3,0,1,2,3,4,5,0,1))
+df
+```
+
+I want to use `dplyr` to make this duration counter. To do so, I will bring in a new dataset, which can be found in the data folder in my github homework folder. 
+
+```{r}
+#import mobilization data
+mob <- read.csv("Data/Mobil.Data.Final.NOT_SUBSETTED.csv")
+```
+
+To give you a quick sense of the data:
+
+* Unit of Analysis == Country-Ethnic_Group-Year
+* Data designed to look at the relationship between when an ethnic group mobilizes and the likelihood of observing a violent event (captured in the "ETHNOWAR" var or the "rebellion" variable)
+* There are `r nrow(mob)` observations in the data.
+* Spans 1945 - 2006
+* Two versions of this data in file: one is subsetted (only democracies), the other is not. I'm using the unsubsetted version here. 
+
+I'm going to use the "ETHNOWAR" variable for this exercise.
+```{r}
+#Subset
+mob.sub <- select(mob,country,year,ID,ETHNOWAR)
+colnames(mob.sub)[4] <- "war"
+head(mob.sub,3)
+mob.sub <- filter(mob.sub,!is.na(year)) #Remove NA years...which is a data cleaning issue
+```
+
+Good. Let's build the count variable now. I need to employ a method a little different than my initial approach. 
+```{r}
+mob.sub <- mob.sub %>% arrange(year) %>% arrange(ID) 
+mob.sub <- mob.sub %>% mutate(count.year = ifelse(war==1,year,0),no.event=ifelse(war==1,0,year)) %>%
+  mutate(count=ifelse(no.event==0,seq(count.year,3,by=1),0)) #This doesn't work.
+```
+
+I've tried a whole number of things....nothing seems to work though. Any suggestions?
+
+
+#### 4. Do yet another case of #2 above, but this time throw in a transformation, too.
+
+Returning to
+```{r}
+#Same Data, Different Subset
+sub2 <- select(mob,ID,year,ELF,polity2)
+x <- sub2 %>% arrange(year) %>% arrange(ID) %>% filter(polity2>0) %>% mutate(expElf = exp(ELF))
+```
+
+
+
+
+
