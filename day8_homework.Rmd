@@ -87,13 +87,21 @@ mob.sub <- filter(mob.sub,!is.na(year)) #Remove NA years...which is a data clean
 ```
 
 Good. Let's build the count variable. I need to employ a method a little different than my initial approach. 
+
+```{r}
+#My initial approach works
+x<- mob.sub %>% group_by(country,ID) %>% mutate(min=min(year)) %>% mutate(count = year - min)
+```
+
 ```{r,eval=F}
+#But things gets more complicated when making the counter dependent on the war variable
+
+#Approach one
 mob.sub <- mob.sub %>% arrange(year) %>% arrange(ID) 
 mob.sub <- mob.sub %>% mutate(count.year = ifelse(war==1,year,0),no.event=ifelse(war==1,0,year)) %>%
   mutate(count=ifelse(no.event==0,seq(count.year,3,by=1),0)) #This doesn't work.
 
 #different approach
-
 mob.sub$count <- NA
 if(mob.sub$war[1]==1){
   x <- mob.sub$count[1] <-0
