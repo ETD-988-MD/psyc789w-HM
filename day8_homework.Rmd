@@ -96,6 +96,12 @@ x<- mob.sub %>% group_by(country,ID) %>% mutate(min=min(year)) %>% mutate(count 
 ```{r,eval=F}
 #But things gets more complicated when making the counter dependent on the war variable
 
+mob.sub %>% 
+  group_by(country,ID) %>%
+  mutate() %>%
+  mutate(years.since.last.war = year -max(year)) 
+
+
 #Approach one
 mob.sub <- mob.sub %>% arrange(year) %>% arrange(ID) 
 mob.sub <- mob.sub %>% mutate(count.year = ifelse(war==1,year,0),no.event=ifelse(war==1,0,year)) %>%
@@ -109,8 +115,8 @@ if(mob.sub$war[1]==1){
      mob.sub$count[1] <- lead(x)
 } #Nope
 
+#This is just painful
 mob.sub$opp <- ifelse(mob.sub$war==1,0,1)
-
 mob.sub %?% group_by(country,ID) %>% 
 distinct(mob.sub$ID)
 for(i in 1:)
