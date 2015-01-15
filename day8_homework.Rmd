@@ -86,11 +86,28 @@ head(mob.sub,3)
 mob.sub <- filter(mob.sub,!is.na(year)) #Remove NA years...which is a data cleaning issue
 ```
 
-Good. Let's build the count variable now. I need to employ a method a little different than my initial approach. 
-```{r}
+Good. Let's build the count variable. I need to employ a method a little different than my initial approach. 
+```{r,eval=F}
 mob.sub <- mob.sub %>% arrange(year) %>% arrange(ID) 
 mob.sub <- mob.sub %>% mutate(count.year = ifelse(war==1,year,0),no.event=ifelse(war==1,0,year)) %>%
   mutate(count=ifelse(no.event==0,seq(count.year,3,by=1),0)) #This doesn't work.
+
+#different approach
+
+mob.sub$count <- NA
+if(mob.sub$war[1]==1){
+  x <- mob.sub$count[1] <-0
+  } else if(mob.sub$war[1]==0) {
+     mob.sub$count[1] <- lead(x)
+} #Nope
+
+mob.sub$opp <- ifelse(mob.sub$war==1,0,1)
+
+mob.sub %?% group_by(country,ID) %>% 
+distinct(mob.sub$ID)
+for(i in 1:)
+mob.sub$count <- ifelse(mob.sub$war==1, 0,lead(mob.sub$opp+i))
+head(mob.sub)
 ```
 
 I've tried a whole number of things....nothing seems to work though. Any suggestions?
