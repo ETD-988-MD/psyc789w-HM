@@ -6,12 +6,11 @@ output: html_document
 1. Use the following data:
 
 ```{r}
-miris <- iris
+myiris <- iris
 set.seed(42)
 for(col in 1:4) {
-  miris[sample(nrow(miris), 20, replace = FALSE), col] <- NA
-}
-
+  myiris[sample(nrow(myiris), 20, replace = FALSE), col] <- NA
+} #Creating NAs 
 ```
 
 2. Write a function that will:
@@ -19,7 +18,128 @@ for(col in 1:4) {
   - return the log of the largest non-NA value
   - Try this out on a vector that you make up
   
-  
+```{r}
+#First, just making the code work once.
+vec <- seq(1,20,3)
+vec
+lnvec <- log(max(vec))
+lnvec
+
+my.func <- function(x){
+  lnvec <- log(max(x))
+  lnvec
+}
+my.func(4:500)
+#Good. But what if there are NAs?
+
+vec2 <- c(1:5,NA,8)
+vec2
+my.func(vec2) #Returns NA
+
+#trouble shooting
+my.func <- function(x){
+  lnvec <- log(max(x))
+  if(is.na(lnvec)){
+    stop("Remove NA values from vector.")
+    }
+  lnvec
+}
+my.func(vec2)
+my.func(4:50)
+#Good.
+```
+
 3. Run this function over rows of the data from #1
 
+```{r}
+myiris$newcol <- apply(myiris[,1:4],1,my.func)
+head(myiris) #good
+```
+
 4. Write a function that will get the standard error of a vector of numbers. Use that function to get a standard error for each measure for each Species in the data from #1 (ignoring NAs)
+
+If I remember correctly, the equation for sample variance is
+
+sum(x-mean)^2/n
+
+Making the sample Standard Deviation (or Standard Error) == sqrt(sum((x-sample.mean)^2)/n) == s/sqrt(n)
+
+```{r}
+require(dplyr)
+
+#Here essentially is the process that we need
+diff.squ <- NA
+for(i in 1:10){ 
+  mean <- mean(1:10)
+  diff.squ[i] <- (i-mean)^2
+  }
+  sum.squ <- sum(diff.squ)
+  n <- length(1:10)
+  Std.Err <- sqrt(sum.squ/n)
+
+#Applying the above to a species subset from iris data
+sub <- myiris %>%  filter(Species=="setosa")#Creating Subset
+
+diff.squ <- NA
+attach(sub)
+for(i in 1:nrow(sub)){
+  if(is.na(Petal.Length[i])){
+    next
+    } else{
+      mean <- mean(!is.na(Petal.Length))
+      diff.squ[i] <- (Petal.Length[i]-mean)^2 
+    }
+  }
+sum.squ <- sum(!is.na(diff.squ))
+n <- nrow(sub)
+Std.Err <- sqrt(sum.squ/n)
+detach(sub)
+
+#Now I need to package it into a more generic framework to work as a function.
+
+std.err <- function(variable){
+  diff.squ <- NA
+  for(i in 1:length(variable)){
+    if(is.na(variable[i])){
+      next
+      } else{
+        mean <- mean(!is.na(variable))
+        diff.squ[i] <- (variable[i]-mean)^2 
+        }
+    } 
+  sum.squ <- sum(!is.na(diff.squ))
+  s <- sqrt(sum.squ)
+  n <- length(variable) 
+  Std.Err <- s/sqrt(n) 
+  Std.Err
+  }
+std.err(myiris$Petal.Length)
+#Not the best function in the world...but it does the job for now. 
+
+####________________________________________#####
+#Here is a less convoluted way to do the same thing would be
+std <- function(x) sd(!is.na(x))/sqrt(length(x))
+std(myiris$Petal.Length)
+#hmmm....this returns a different result...so which is wrong.
+
+#I need a third opinion
+library(plotrix)
+std.error(myiris$Petal.Length)
+#offers even a different value...hmm maybe the issue is with the NAs
+
+##### Comparing via tweeking the function
+std <- function(x){
+  x <- x[!is.na(x)] #This will drop the NAs
+  sd(x)/sqrt(length(x))
+  }
+std(myiris$Petal.Length)
+#That's it...they are dropping the NAs in the
+#plotrix version of the function. 
+
+myiris.Std.err <- apply(myiris[1:4],2,std)
+myiris.Std.err 
+```
+
+So given the above computation...the question is which was is correct? Should one drop the NAs or account for them when computing the N?
+
+

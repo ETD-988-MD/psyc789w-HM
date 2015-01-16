@@ -1,15 +1,191 @@
 ---
 title: "Day 9 Homework"
-output: html_document
+author: "Eric Dunford"
+output: pdf_document
 ---
+```{r}
+#Data
+mob <- read.csv("Data/Mobil.Data.Final.NOT_SUBSETTED.csv")
+#packages
+require(reshape2)
+require(dplyr)
+#Subsetting the Data
+sub <- mob %>% select(country,year,epr.group,mobilized,mobilizing,ETHNOWAR,ELF) %>% filter(!is.na(epr.group))
+colnames(sub)[6:7] <- c("e.war","elf")
+head(sub)
+```
 
-1. Write a function to do a bunch of clean-up and formatting to your data.
+Here is a subset of the data. There are NA issues. There is no unique Identifier for observations. All in all, problems to be solved. 
 
-2. Make sure this function works on your data.
+#### 1. Write a function to do a bunch of clean-up and formatting to your data.
 
-3. Get some subset of your data, or find a similar-but-not-identical data set.  Change up the column order.  Re-run your function on this new data.  Does it work?
+Often in data that sets the unit of analysis at group.country.year it is useful to have a unique ID for each country ethnic group pair. Usually, I do this step by step (which is a big part of prepping data for a merge). But let's build a function to do it.
 
-4. Fix your function to be able to work on the new data.
+```{r}
+identifier <- function(country.var,ethnic.group,code.type){
+  library(countrycode)
+  library(stringr)
+  country.codes <- c("cowc", "cown", "iso3c", "iso3n", "iso2c", "imf", "fips104", "fao", "ioc", "un", "wb")
+  if(code.type %in% country.codes){
+    code <- countrycode(country.var,"country.name",code.type)
+    } else {stop("Please one of the viable country code types.")}
+  group <- str_sub(ethnic.group,start=1,end=5)
+  ID <- paste(group,code,sep="_")
+  ID <- tolower(ID)
+  ID
+  }
 
-5. Write a function to do some kind of summary stat, and use the `dplyr` functions to run this function over groups of your data.
+#Applying function to data.frame
+sub$ID <- identifier(sub$country,sub$epr.group,code.type="cowc")
+head(sub) #Beautiful!
+```
+
+Questions:
+  - Why does piping via `dplyr` cause so many problems within the function?
+  - How do you retrieve a specific variable from a data. Say this is your function - fun(data,var)...how do you get data$var to work in the function?
+
+#### 2. Make sure this function works on your data.
+
+See 1.
+
+#### 3. Get some subset of your data, or find a similar-but-not-identical data set.  Change up the column order.  Re-run your function on this new data.  Does it work?
+
+I will do two things. First, I will take a different subset of the my data and see if the function works. Then I will create my own dataset with absurd ethnic group names and see if that works.
+
+New Subset. 
+```{r}
+sub2 <- mob %>% select(country,year,mar.group,mobilized,mobilizing,ETHNOWAR,ELF) %>% filter(!is.na(mar.group))
+colnames(sub2)[6:7] <- c("e.war","elf")
+head(sub2)
+
+#Time to test the function - using a different code type.
+sub2$ID <- identifier(sub2$country,sub2$mar.group,code.type="wb")
+head(sub2) #Worked!
+```
+
+Fake data
+```{r}
+fake <- data.frame(year=1975:2010,
+                   country=c("Russia","Prussia","Europe","Maldives"),
+                   ethnic.group=c("gooopy","flaadd","wteeet"))
+head(fake)
+#Goofy data - but it works as a test.
+#Here I introduced a problem - countries that (a) might not exist or
+#(b) regions instead of countries (e.g. "Europe")
+fake$ID <- identifier(fake$country,fake$ethnic.group,code.type="cowc")
+head(fake)
+unique(fake$ID)
+```
+
+Great! The function worked. Where the regions didn't make sense to the code (such as Europe or Prussia), it returned an NA attachment...which works for the my purposed. But it would be nice if the function would let me know when this is happening, and maybe even stop so that I can a) remove those groups, or b) at least have a heads up that something is amiss. 
+
+#### 4. Fix your function to be able to work on the new data.
+
+```{r}
+#Fixing the Function so that it does something with NA values for country (i.e. if the country isn't accounted for in the countrycode package).
+
+#remove ID var from "fake" data
+fake$ID <- NULL
+
+#Here is the "warning version"
+identifier1 <- function(country.var,ethnic.group,code.type){
+  library(countrycode)
+  library(stringr)
+  country.codes <- c("cowc", "cown", "iso3c", "iso3n", "iso2c", "imf", "fips104", "fao", "ioc", "un", "wb")
+  if(code.type %in% country.codes){
+    code <- countrycode(country.var,"country.name",code.type)
+    } else {stop("Please one of the viable country code types.")}
+  test[code=="na"] <- NA
+  if(test){
+    stop("One or more countries are incompatible. Check to make sure country names follow conventional spelling or that region have not been accidentally included in the vector.\n")
+    }
+  group <- str_sub(ethnic.group,start=1,end=5)
+  ID <- paste(group,code,sep="_")
+  ID <- tolower(ID)
+  ID
+  }
+fake$ID <- identifier1(fake$country,fake$ethnic.group,code.type="cowc") 
+```
+
+Now the function stops with a warning when country names don't translate. But honestly, I hate functions that can't run unless everything is perfect. Rather it would be nice the function returned a simple NA for the ID variable so that the user can clearly identify issue areas and even exclude those countries from his/her analysis without having to arduously figure out which country isn't named right. 
+
+```{r}
+#remove ID var from "fake" data again
+fake$ID <- NULL
+
+#Here is the "NA" version
+identifier2 <- function(country.var,ethnic.group,code.type){
+  library(countrycode)
+  library(stringr)
+  country.codes <- c("cowc", "cown", "iso3c", "iso3n", "iso2c", "imf", "fips104", "fao", "ioc", "un", "wb")
+  if(code.type %in% country.codes){
+    code <- countrycode(country.var,"country.name",code.type)
+    } else {stop("Please one of the viable country code types.")}
+  group <- str_sub(ethnic.group,start=1,end=5)
+  code[code=="na"] <- NA
+  ID <- NA
+  for(i in 1:length(code)){
+    if(!is.na(code[i])){
+      ID[i] <- paste(group[i],code[i],sep="_")
+      ID[i] <- tolower(ID[i])
+      }
+    }
+  ID
+  }
+fake$ID <- identifier2(fake$country,fake$ethnic.group,code.type="cowc") 
+head(fake)
+```
+
+It worked!
+
+#### 5. Write a function to do some kind of summary stat, and use the `dplyr` functions to run this function over groups of your data.
+
+When I am first looking at a dataset, sometimes I wish there was a quick and easy way to visualize the distribution of all the variables in the data frame at once, instead of having to run a bunch of seperate histogram commands. Let's build a historgram summary function that offers up a lattice plot of all the distribution of the variables. 
+
+```{r}
+#Let's use the cars data.
+pp <- cars
+pp$color <- rep(c("black","blue","red"),len=nrow(pp))
+head(pp) #data
+```
+
+Data's in. Time to build the function.
+
+```{r}
+
+see.the.dist <- function(data){
+  require(ggplot2)
+  col.names <- colnames(data)
+  plot <- NA
+  for(i in 1:length(data)){
+    assign(paste("plot",i,sep="_"),NA)
+    if(is.numeric(data[,i])){
+      sub <- as.numeric(data[,1])
+      } else {is.character(data[,i]) | is.factor(data[,i]))} if(!is.factor){
+        y <- as.factor(data[,i])
+        plot <- ggplot(data,aes(x=y)) + 
+      geom_histogram() + theme_bw() +
+      xlab(col.names[i]) + ggtitle(paste("Variable:",col.names[i])) 
+    assign(paste("plot",i,sep="_"),plot)
+        } else {
+          f <- data[,i]
+          plot <- ggplot(data,aes(x=f)) + 
+      geom_histogram() + theme_bw() +
+      xlab(col.names[i]) + ggtitle(paste("Variable:",col.names[i])) 
+    assign(paste("plot",i,sep="_"),plot)}
+  plot <- ggplot(data,aes(x=sub)) + 
+  geom_histogram() + theme_bw() +
+  xlab(col.names[i]) + ggtitle(paste("Variable:",col.names[i])) 
+assign(paste("plot",i,sep="_"),plot)
+}
+
+}
+see.the.dist(pp)
+
+#This is as far as I got....but it's coming along!
+```
+
+
+
+
 
