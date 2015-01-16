@@ -158,34 +158,41 @@ see.the.dist <- function(data){
   col.names <- colnames(data)
   plot <- NA
   for(i in 1:length(data)){
+    
     assign(paste("plot",i,sep="_"),NA)
+    
     if(is.numeric(data[,i])){
+      
       sub <- as.numeric(data[,1])
-      } else {is.character(data[,i]) | is.factor(data[,i]))} if(!is.factor){
+      plot <- ggplot(data,aes(x=sub)) + 
+        geom_histogram() + theme_bw() +
+        xlab(col.names[i]) + ggtitle(paste("Variable:",col.names[i])) 
+      assign(paste("plot",i,sep="_"),plot)
+      
+      } else { if(!is.factor(data[,i])){
+        
         y <- as.factor(data[,i])
         plot <- ggplot(data,aes(x=y)) + 
       geom_histogram() + theme_bw() +
       xlab(col.names[i]) + ggtitle(paste("Variable:",col.names[i])) 
     assign(paste("plot",i,sep="_"),plot)
+    
         } else {
           f <- data[,i]
           plot <- ggplot(data,aes(x=f)) + 
       geom_histogram() + theme_bw() +
       xlab(col.names[i]) + ggtitle(paste("Variable:",col.names[i])) 
-    assign(paste("plot",i,sep="_"),plot)}
-  plot <- ggplot(data,aes(x=sub)) + 
-  geom_histogram() + theme_bw() +
-  xlab(col.names[i]) + ggtitle(paste("Variable:",col.names[i])) 
-assign(paste("plot",i,sep="_"),plot)
-}
-
-}
+      assign(paste("plot",i,sep="_"),plot) } } } 
+  
+  for(i in 1:length(data)){
+    get(paste("plot",i,sep="_"))
+  }
+    
+  }
 see.the.dist(pp)
 
 #This is as far as I got....but it's coming along!
 ```
-
-
 
 
 
