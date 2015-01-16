@@ -1,12 +1,95 @@
 ---
 title: "Day 10 Homework"
+author: "Eric Dunford"
 output: html_document
 ---
+```{r}
+#Data
+data <- read.csv("Data/NAVCO_2.0.csv") 
+#Packages
+require(dplyr)
+require(MASS)
+require(ggplot2)
+require(RColorBrewer)
+```
 
-1. Find some relationship in your data (e.g., correlation, comparison of means, etc.) that is "significant" (don't worry too much about what that might mean).
+#### 1. Find some relationship in your data (e.g., correlation, comparison of means, etc.) that is "significant" (don't worry too much about what that might mean).
 
-2. Get an estimate of the effect size (e.g., the difference between means, or the correlation).
+Looking at a simple bivariate relationship between a movements decision to provide social services and its effect on the the movement's progress toward its stated goals.
+```{r}
+summary(data$progress)
+summary(data$pi_socwel)
+results <- summary(lm(progress~pi_socwel,data=data)) #OLS - note appropriate given the variables
+results
+```
 
-3. Simulate data with this effect size (either using mvrnorm or adding a simulated effect), but with a much smaller data sample.  In other words, simulate an underpowered study.
+#### 2. Get an estimate of the effect size (e.g., the difference between means, or the correlation).
 
-4. Examine the amount of effect-size inflation via the "significance filter" by looking at the effect sizes from the simulations, for just the sims where the effect turned out significant.
+Let's just look at how these two variables correlate.
+```{r}
+corr <- cor.test(data$progress,data$pi_socwel)
+corr$estimate #Effect
+corr$p.value #p-value
+corr$parameter #Degress of Freedom
+```
+
+Movements that provide good and services for their constituencies are on average less successful in achieving their stated goals.
+
+#### 3. Simulate data with this effect size (either using mvrnorm or adding a simulated effect), but with a much smaller data sample.  In other words, simulate an underpowered study.
+
+```{r}
+#means and var-cov same as original data.
+#Looping method
+sims <- 1000
+results.table <- data.frame(cor=NA,pval=NA,sim_num = 1:sims)
+for(i in 1:sims){
+  sim.data <- mvrnorm(100,mu=c(0.7604,0.4568),Sigma=matrix(c(1,-0.1003577,-0.1003577,1),nrow=2)) %>% as.data.frame(.)
+  sim.corr <- cor.test(sim.data$V1,sim.data$V2)
+  results.table[i,1] <- sim.corr$estimate
+  results.table[i,2] <- sim.corr$p.value
+}
+summary(results.table)
+```
+
+
+#### 4. Examine the amount of effect-size inflation via the "significance filter" by looking at the effect sizes from the simulations, for just the sims where the effect turned out significant.
+
+```{r}
+alpha <- .05
+sim.effect <- filter(results.table,pval < alpha)
+ggplot(sim.effect,aes(x=cor)) + geom_histogram() + theme_bw() 
+
+#I think this is what the question is asking (similar to the practice)
+results.table$stat.sig <- results.table$pval < alpha
+effect.plot <- ggplot(results.table, aes(x=cor)) + geom_histogram(aes(fill = stat.sig)) + 
+  geom_vline(xintercept = -0.1003577, linetype = 2) + theme_bw()
+effect.plot
+
+effect.plot.faceted <- ggplot(results.table, aes(x=cor)) + geom_histogram(aes(fill = stat.sig)) + 
+  geom_vline(xintercept = -0.1003577, linetype = 2) + theme_bw() + facet_grid(stat.sig ~ .)
+effect.plot.faceted
+```
+
+This is interesting. All the statistically significant results are substantively off. If the true population correlation was -.1 as it is in the data, then if we only sought out statistical significance given a low number of observations, we'd be reporting biased results... or something along those lines. Interesting! And cool way to go about thinking through this. 
+
+----
+
+Let's do the same thing but this time running the simulation with the exact same number of observations as in the data...will the results be generally the same?
+
+```{r}
+sims <- 1000
+results.table2 <- data.frame(cor=NA,pval=NA,sim_num = 1:sims)
+for(i in 1:sims){
+  sim.data <- mvrnorm(1305,mu=c(0.7604,0.4568),Sigma=matrix(c(1,-0.1003577,-0.1003577,1),nrow=2)) %>% as.data.frame(.)
+  sim.corr <- cor.test(sim.data$V1,sim.data$V2)
+  results.table2[i,1] <- sim.corr$estimate
+  results.table2[i,2] <- sim.corr$p.value
+}
+summary(results.table2)
+results.table2$stat.sig <- results.table2$pval < alpha
+effect.plot.faceted2 <- ggplot(results.table2, aes(x=cor)) + geom_histogram(aes(fill = stat.sig)) + 
+  geom_vline(xintercept = -0.1003577, linetype = 2) + theme_bw() + facet_grid(stat.sig ~ .)
+effect.plot.faceted2
+```
+
+Neat!
