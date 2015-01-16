@@ -1,0 +1,68 @@
+---
+title: "Day 10 Practice"
+output: html_document
+---
+
+Let's try to simulate the impact of the "file drawer" problem on effect-size estimates.
+
+#### 1. First, simulate data with 100 observations of two variables that are correlated at .3.
+```{r}
+simulate
+require(MASS)
+
+set.seed(50)
+cor.data <- mvrnorm(n = 100, mu = c(0, 0), Sigma = matrix(c(1, .3, .3, 1), nrow = 2),empirical=T)
+cor.data <- as.data.frame(cor.data)
+head(cor.data)
+```
+
+#### 2. Run a cor.test and get a p-value.
+
+```{r}
+results1 <- cor.test(cor.data$V1,cor.data$V2)
+#Correlation
+results1$estimate
+#p-value
+results1$p.value
+```
+
+#### 3. Now run simulations with very low power (like 10 or 20 observations).  For each simulation, record both the correlation and the p-value of the cor.test.
+
+```{r}
+sim1 <- function(n=10){
+  cor.data2 <- mvrnorm(n, mu = c(0, 0), Sigma = matrix(c(1, .3, .3, 1), nrow = 2))
+  cor.data2 <- as.data.frame(cor.data2)
+  cor <- cor.test(cor.data2$V1,cor.data2$V2)
+  results <- data.frame("cor" = cor$estimate,"p-value" = cor$p.value,row.names=NULL)
+  results
+}
+system.time(sims <- replicate(100, sim1(10)))
+sim.output <- data.frame(sims)
+
+### or another method
+nsim <- 1000
+
+results.table <- data.frame(cor=rep(NA,nsim),pval=NA)
+
+for(i in 1:nsim){
+  simdata <- mvrnorm(n, mu = c(0, 0), Sigma = matrix(c(1, .3, .3, 1), nrow = 2),empirical = F)
+  simcor.test <- cor.test(simdata[,1],simdata[,2])
+  simcor <- simcor.test$estimate
+  pval <- simcor.test$p.value
+  results.table[i,] <- c(simcor,pval)
+}
+
+```
+
+
+#### 4. Check to see what the distribution of correlations are, only for the runs where p < .05.
+
+```{r}
+alpha <- .05
+library(dplyr)
+library(ggplot)
+results.sig <- filter(results.table, pval < alpha)
+ggplot(results.table,aes(cor)) + geom_histogram()
+ggplot(results.table,aes(pval)) + geom_histogram()
+```
+
