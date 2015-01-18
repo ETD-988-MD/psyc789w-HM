@@ -1,0 +1,58 @@
+---
+title: "ISIS Troop Movement: Data Collection"
+author: "Cambridge"
+date: "January 17, 2015"
+output: html_document
+---
+Updated: ` rformat(Sys.Date(),"%m/%d/%y")`
+```{r,message=F,results="hide",echo=F}
+#Packages
+lapply(c("dplyr","ggplot2","XML","ggplot2","reshape2","lubridate"),library,character.only=T)
+```
+
+The following is scraping for ISIS troop movements in Iraq and Syria in 2014. Here I will use the `XML()` package and I will be pulling my data from [International Security]("http://securitydata.newamerica.net/isis/analysis?page=1"). Here the data is already self contained in a table. This is a convenient format (of which `XML()` is well situated to handle). The data specifies areas that were under ISIS control, the Iraqi government, the Kurdish Peshmergas, or that were contested. 
+
+```{r}
+isis.url <- htmlParse("http://securitydata.newamerica.net/isis/analysis")
+isis.table <- readHTMLTable(isis.url,stringsAsFactors = FALSE)
+#str(isis.table)
+isis.data <- data.frame(isis.table[[1]][1],isis.table[[1]][2],isis.table[[1]][3])
+colnames(isis.data) <- c("date","location","control")
+head(isis.data)
+
+#The different controlling powers
+unique(isis.data$control)
+```
+
+The data retrieved above only includes one page of a four-page table. I need to be able to grab all those tables. Here we will make a loop that cycles through the various URLS. 
+
+```{r}
+pages <- c("","page=1","page=2","page=3")
+isis.merge <- data.frame()
+end <- data.frame
+for(i in 1:length(pages)){
+  isis.url <- paste("http://securitydata.newamerica.net/isis/analysis",pages[i],sep="?")
+  isis.url <- htmlParse(isis.url)
+  isis.table <- readHTMLTable(isis.url,stringsAsFactors = FALSE)
+  isis.data <- data.frame(x=isis.table[[1]][1],y=isis.table[[1]][2],z=isis.table[[1]][3])
+  colnames(isis.data) <- c("date","location","control")
+  #isis.melt <- melt(isis.data,id.vars = "date")
+  assign(paste("isis.data",i,sep="_"),isis.data) 
+}
+isis.data <- isis.data_1 %>% merge(.,isis.data_2,all=T) %>% merge(.,isis.data_3,all=T) %>% merge(.,isis.data_4,all=T)
+head(isis.data)
+dim(isis.data)
+#converting the dates
+isis.data$date <- as.Date(isis.data$date,"%B %d, %Y")
+#date summary
+summary(isis.data$date)
+isis.data %>% summarize(min=min(date),max=max(date),timespan=max-min)
+```
+
+
+
+
+
+
+
+
