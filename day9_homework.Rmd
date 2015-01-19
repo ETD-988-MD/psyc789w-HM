@@ -172,8 +172,8 @@ distGlimpse <- function(data){
         plot <- ggplot(data,aes(x=y)) + 
       geom_histogram() + theme_bw() +
       geom_histogram() + theme_bw() +
-        xlab(col.names[i]) + ggtitle(paste("Variable:",toupper(col.names[i]))) + 
-        theme(plot.title = element_text(lineheight=1, face="bold"))
+        xlab(col.names[i]) + ggtitle(toupper(col.names[i])) + 
+        theme(plot.title = element_text(lineheight=1, face="bold",size = 20))
       assign(paste("plot",i,sep="_"),plot)  
       }
       }
