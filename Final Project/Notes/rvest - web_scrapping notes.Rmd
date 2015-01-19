@@ -1,0 +1,44 @@
+---
+title: "rvest - Web Scrapping approach"
+date: "January 19, 2015"
+output: html_document
+---
+This is general walkthrough of implementing the `rvest` package to harvest data from the web. 
+
+## the "rvest" package approach
+
+`rvest` is a hadley package - play on "harvest". See [rvest - introduction](http://blog.rstudio.org/2014/11/24/rvest-easy-web-scraping-with-r/)
+
+```{r}
+require(rvest)
+#For specifics on selector gadget to find the css of the website, see
+#vignette("selectorgadget")
+
+#To see capability, demo the package
+#demo(package = "rvest")
+require(dplyr) #for the pipe
+```
+
+Let's give it a swing pulling data similar to that of the vignette (i.e. IMDB movie data on the movie "Boyhood")
+```{r}
+boyhood.url <- html("http://www.imdb.com/title/tt1065073/fullcredits")
+cast <- html_nodes(boyhood.url,"span.itemprop")
+length(cast)
+df <- html_text(cast) %>% data.frame(cast=.)
+df$cast <- as.character(df$cast)
+head(df)
+#This has a list of all the actors in the movie
+```
+
+This was a simple exercise...though there are real limitations to this approach. One thing is that the selectorgadge can be a rather tedious thing to use. And even then you have to manually adapt it when you want to retrieve different pieces of information.
+
+Here I will play with some of the versatility of the package
+```{r,eval=F}
+boyhood.url <- "http://www.imdb.com/title/tt1065073/"
+
+#Here is a way to view html pages in Rstudio.
+require(httpuv)
+rstudio::viewer(boyhood.url)
+#htm1_session(),jump_to(), follow_link(), back(), and forward()
+html_session(boyhood.url) %>% follow_link("see full cast & crew")
+```

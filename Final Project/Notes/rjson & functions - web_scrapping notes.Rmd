@@ -1,0 +1,283 @@
+---
+title: "json & scrapping functions - Web-Scrapping Approach"
+date: "January 17, 2015"
+output: html_document
+---
+```{r,results="hide",echo=F}
+#Packages
+lapply(c("dplyr","foreign","reshape2","ggplot2","rjson","XML","RCurl"),library,character.only=T) 
+#quick way to load multiple packages
+```
+
+The following will outline my attempts at web-scrapping. Below the `json`, `XML`, and `RCurl` packages will be utilized to scrap data from the web. I heavily used an online tutorial based of a Cambridge class that can be found [here](http://www.r-bloggers.com/web-scraping-the-basics/).
+
+### rjson approach for simple webscrapping
+
+See the tutorial I was working off 
+
+This is a way to use paste with URLs
+```{r}
+var=201301
+url = paste("http://stats.grok.se/json/en/",var,"/web_scrapping",sep="")
+url
+#browseURL(url)
+raw.data <- readLines(url,warn=F)
+```
+
+The data on the sight is in a json format (Java Script). There is package that allows R to process this kind of material.
+
+```{r}
+require(rjson)
+rd  <- fromJSON(raw.data)
+rd.views <- rd$daily_views
+df <- as.data.frame(unlist(rd.views))
+```
+
+Plotting this data
+```{r}
+require(ggplot2)
+require(lubridate)
+df$date <-  as.Date(rownames(df))
+colnames(df) <- c("views","date")
+ggplot(df,aes(date,views))+
+  geom_line()+
+  geom_smooth()+
+  theme_bw(base_size=20)
+```
+
+Using a loop to specify specific URLs (by altering the date.)
+```{r}
+url <- data.frame(url=NA)
+for (year in 2012:2013){
+  for (month in 1:9){
+  	url[month,] <- paste("http://stats.grok.se/json/en/",year,0,month,"/web_scraping",sep="")
+	}
+	for (month in 10:12){
+		url[month,] <- paste("http://stats.grok.se/json/en/",year,month,"/web_scraping",sep="")
+	}
+}
+head(url)
+```
+
+Here is small function for simple web-scrapping.
+```{r}
+getData <- function(url){
+  for(i in 1:nrow(url)){
+    raw.data <- readLines(url[i,], warn=F) 
+    rd  <- fromJSON(raw.data)
+    rd.views <- rd$daily_views 
+    rd.views <- unlist(rd.views)
+    rd <- as.data.frame(rd.views)
+    rd$date <- rownames(rd)
+    rownames(rd) <- NULL
+    assign(paste("rd",i,sep="_"),rd) 
+  }
+  data <- data.frame()
+  for(i in 1:nrow(url)){
+    data <- rbind(get(paste("rd",i,sep="_")),data)
+    }
+  data
+}
+web.data <- getData(url)
+dim(web.data) 
+head(web.data)
+```
+
+Plotting this data
+```{r}
+web.data$date <-  as.Date(web.data$date)
+ggplot(web.data,aes(x=date,y=rd.views)) +
+  geom_line()+
+  geom_smooth()+
+  theme_bw()
+```
+
+This is a "simple" web-scrapping methodology because it's retrieving from a (relatively) easy data structure, and something is known about the data that we are compiling. For this reason, this function works when retrieving this specific data set. However, we can expand on this later on and use some of the functionality located here down the road. 
+
+### Building a "scrapper"
+
+Back to the [Cambridge Tutorials]("http://quantifyingmemory.blogspot.com/2014/02/web-scraping-part2-digging-deeper.html") The code from the previous tutorial left off here. 
+
+```{r}
+require(rjson)
+url  <- "http://stats.grok.se/json/en/201201/web_scraping"
+raw.data <- readLines(url, warn="F") 
+rd  <- fromJSON(raw.data)
+rd.views <- rd$daily_views 
+rd.views <- unlist(rd.views)
+rd <- as.data.frame(rd.views)
+rd$date <- rownames(rd)
+rownames(rd) <- NULL
+head(rd)
+```
+
+The information is scrapped from the sight -- though the tutorial left off with the best way to set up a more sustainable scrape that doesn't require as much effort to get set up. 
+
+#### Using functions to ease the process
+
+```{r}
+getData <- function(url){
+  require(rjson)
+  raw.data <- readLines(url, warn="F") 
+  rd  <- fromJSON(raw.data)
+  rd.views <- rd$daily_views 
+  rd.views <- unlist(rd.views)
+  rd <- as.data.frame(rd.views)
+  rd$date <- rownames(rd)
+  rownames(rd) <- NULL
+  rd$date <- as.Date(rd$date)
+  return(rd)
+}
+
+getData("http://stats.grok.se/json/en/201201/web_scraping") %>% head(.)
+```
+
+Building a function can mechanize the process (as long as you account for the parts that might vary).
+
+#### Creating the URL
+```{r}
+getUrl <- function(y1,y2,term){
+  root <- "http://stats.grok.se/json/en/"
+    urls <- NULL
+    for (year in y1:y2){
+      for (month in 1:9){
+        urls <- c(urls,(paste(root,year,0,month,"/",term,sep="")))
+      }
+    
+      for (month in 10:12){
+        urls <- c(urls,(paste(root,year,month,"/",term,sep="")))
+    	}
+    }
+    return(urls)
+}
+
+#Easy way to construct the URL
+urls <- getUrl(y1=2013,y2=2014,"Euromaidan")
+urls
+```
+
+Now get data for each of them and store that data
+
+```{r}
+results=NULL
+for (url in urls){
+  results <- rbind(results,getData(url))
+}
+head(results)
+
+ggplot(tail(results,100),aes(date,rd.views))+geom_line(color="blue")+theme_black()
+```
+
+This can be powerful way to retrieve large amounts of information. 
+
+### Downloading the web page
+
+**Getting to know HTML structure**
+
+[http://en.wikipedia.org/wiki/Euromaidan]("http://en.wikipedia.org/wiki/Euromaidan")
+
+Let's look at this webpage
+
+- Headings
+- Images
+- links
+- references
+- tables
+
+To look at the code (in Google Chrome), right-click somewhere on the page and select 'inspect element'
+
+Tree-structure (parents, siblings)
+
+**Back to Wikipedia**
+
+HTML tags.
+
+They come in pairs and are surrounded by these guys:
+<>
+
+e.g. a heading might look like this:
+
+\<h1\>MY HEADING\</h1\>
+<h1>MY HEADING</h1>
+
+Which others do you know or can you find?
+
+**HTML tags**
+
+- \<html>: starts html code
+- \<head> : contains meta data etc
+- \<script> : e.g. javascript to be loaded
+- \<style> : css code
+- \<meta> : denotes document properties, e.g. author, keywords
+- \<title> : 
+- \<body> : 
+
+**HTML tags2**
+
+- \<div>, \<span> :these are used to break up a document into sections and boxes
+- \<h1>,\<h2>,\<h3>,\<h4>,\<h5> Different levels of heading
+- \<p> : paragraph
+- \<br> : line break
+- and others: \<a>, \<ul>, \<tbody>, \<th>, \<td>, \<ul>, \<ul>, <img>
+
+**Principles of scraping**
+
+- Identify the tag
+- Download the web-page
+- Extract content matching the tag
+- Save the content
+- Optional: repeat
+
+**Download the web page**
+
+XML Parser: Parses an XML or HTML file or string containing XML/HTML content, and generates an R structure representing the XML/HTML tree. 
+
+```{r}
+require(RCurl)
+require(XML)
+
+url <- "http://en.wikipedia.org/wiki/Euromaidan"
+SOURCE <-  getURL(url,encoding="UTF-8") #Download the page
+#this is a very very long line. Let's not print it. Instead:
+substring(SOURCE,1,200) #Way of extracting pieces of the string, since the whole file is very large
+PARSED <- htmlParse(SOURCE) #Format the html code
+```
+
+we can use XPath expressions to extract elements from HTML.
+
+```{r}
+xpathSApply(PARSED, "//h1")
+```
+
+Not so pretty. But! Specifying `xmlValue` strips away the surrounding code and returns only the content of the tag
+
+```{r}
+xpathSApply(PARSED, "//h1",xmlValue)
+
+#See how low you can go. Remember, it's a hierarchy
+xpathSApply(PARSED, "//h2",xmlValue)
+
+head(xpathSApply(PARSED, "//h3",xmlValue))
+
+# and links
+length(xpathSApply(PARSED, "//a/@href"))
+# there's loads of them. We need to be more selective
+```
+
+### CSS and Xpath
+
+web-designers use Cascading Style Sheets to determine the way a webpage looks. Like variables: change the style, rather than the every item on a page. <strong>CSS allows us to make better selections, by latching onto tags</strong>.**Xpath allows us to move up and down the html tree structure**. CSS can be an html **attribute**
+
+Here is an example of getting the references:
+```{r}
+head(xpathSApply(PARSED, "//span[@class='citation news']",xmlValue),1)
+
+#without xmlValue
+head(xpathSApply(PARSED, "//span[@class='citation news']/a/@href"),1)
+```
+
+```{r}
+links <- (xpathSApply(PARSED, "//span[@class='citation news']/a/@href"))
+```
+
+

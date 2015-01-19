@@ -153,43 +153,34 @@ Data's in. Time to build the function.
 
 ```{r}
 
-see.the.dist <- function(data){
+distGlimpse <- function(data){
   require(ggplot2)
   col.names <- colnames(data)
   plot <- NA
   for(i in 1:length(data)){
-    
     assign(paste("plot",i,sep="_"),NA)
-    
     if(is.numeric(data[,i])){
-      
-      sub <- as.numeric(data[,1])
-      plot <- ggplot(data,aes(x=sub)) + 
+      plot <- NA
+      plot <- ggplot(data,aes(x=data[,i])) + 
         geom_histogram() + theme_bw() +
-        xlab(col.names[i]) + ggtitle(paste("Variable:",col.names[i])) 
+        xlab(col.names[i]) + ggtitle(paste("Variable:",toupper(col.names[i]))) + 
+        theme(plot.title = element_text(lineheight=1, face="bold"))
       assign(paste("plot",i,sep="_"),plot)
-      
-      } else { if(!is.factor(data[,i])){
-        
+      } else { if(is.character(data[,i])){
+        plot <- NA
         y <- as.factor(data[,i])
         plot <- ggplot(data,aes(x=y)) + 
       geom_histogram() + theme_bw() +
-      xlab(col.names[i]) + ggtitle(paste("Variable:",col.names[i])) 
-    assign(paste("plot",i,sep="_"),plot)
-    
-        } else {
-          f <- data[,i]
-          plot <- ggplot(data,aes(x=f)) + 
       geom_histogram() + theme_bw() +
-      xlab(col.names[i]) + ggtitle(paste("Variable:",col.names[i])) 
-      assign(paste("plot",i,sep="_"),plot) } } } 
-  
-  for(i in 1:length(data)){
-    get(paste("plot",i,sep="_"))
-  }
-    
-  }
-see.the.dist(pp)
+        xlab(col.names[i]) + ggtitle(paste("Variable:",toupper(col.names[i]))) + 
+        theme(plot.title = element_text(lineheight=1, face="bold"))
+      assign(paste("plot",i,sep="_"),plot)  
+      }
+      }
+    } 
+  }    
+}
+distGlimpse(pp)
 
 #This is as far as I got....but it's coming along!
 ```

@@ -1,0 +1,53 @@
+---
+title: "XML - Web Scrapping Approach"
+date: "January 19, 2015"
+output: html_document
+---
+This is general walkthrough of implementing the `XML` package to harvest data from the web. 
+
+## 'XML' package approach - for extracting tables from the web
+
+See [XML walkthrough - Columbia](http://www.columbia.edu/~cjd11/charles_dimaggio/DIRE/styled-4/styled-6/code-13/)
+
+For this initial example we will be pulling from the [following URL]("http://apps.saferoutesinfo.org/project_list/results.cfm")
+```{r}
+library(XML)
+projects<-htmlParse("http://apps.saferoutesinfo.org/project_list/results.cfm")
+class(projects) #weird document class
+projects.table<- readHTMLTable(projects,stringsAsFactors = FALSE)
+str(projects.table) #structure of the table
+expenditures<-data.frame(cbind(projects.table[[1]][1],projects.table[[1]][3])) #partialing out the arrays we want
+#And like that the data is in a workable format in R.
+
+#Cleaning the data
+colnames(expenditures)[2] <- "Award.Amount"
+expenditures$Award.Amount<-gsub(",", "", as.character(expenditures$Award.Amount), fixed = TRUE) #Resolving a formating issue with the amount column
+expenditures$Award.Amount<-as.numeric(substring(expenditures$Award.Amount,2))
+expenditures$Award.Amount[1:5]
+expenditures <- expenditures %>% group_by(State) %>% mutate(u=mean(Award.Amount),sd=sd(Award.Amount))
+
+#Top Awar winners.
+top5 <- expenditures %>% group_by(State) %>% summarize(Award.Amount=mean(Award.Amount)) 
+str(top5)
+top5 <- arrange(top5,desc(Award.Amount))
+head(top5,5)
+```
+
+Here is code for when there are multiple tables on a page. The example uses the following [Tornado]("http://www.cdc.gov/mmwr/preview/mmwrhtml/mm6128a3.htm?s_cid=mm6128a3_e%0d%0a")
+```{r,}
+tornados<-htmlParse("http://www.cdc.gov/mmwr/preview/mmwrhtml/mm6128a3.htm?s_cid=mm6128a3_e%0d%0a")
+tornado.tables<- readHTMLTable(tornados,stringsAsFactors = FALSE)
+length(tornado.tables)
+
+#Here are the different tables that have been drawn from. 
+head(tornado.tables[[1]])  
+tail(tornado.tables[[1]])
+
+head(tornado.tables[[2]])  
+tail(tornado.tables[[2]])
+
+head(tornado.tables[[3]])  
+tail(tornado.tables[[3]]) 
+```
+
+You can loop through the multiple tables and extract the pieces of data that you want. 
