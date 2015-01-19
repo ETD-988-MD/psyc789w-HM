@@ -4,11 +4,14 @@ author: "Cambridge"
 date: "January 17, 2015"
 output: html_document
 ---
-Updated: ` rformat(Sys.Date(),"%m/%d/%y")`
+Updated: `r format(Sys.Date(),"%m/%d/%y")`
+
 ```{r,message=F,results="hide",echo=F}
 #Packages
 lapply(c("dplyr","ggplot2","XML","ggplot2","reshape2","lubridate"),library,character.only=T)
 ```
+
+### Iraq Data
 
 The following is scraping for ISIS troop movements in Iraq and Syria in 2014. Here I will use the `XML()` package and I will be pulling my data from [International Security]("http://securitydata.newamerica.net/isis/analysis?page=1"). Here the data is already self contained in a table. This is a convenient format (of which `XML()` is well situated to handle). The data specifies areas that were under ISIS control, the Iraqi government, the Kurdish Peshmergas, or that were contested. 
 
@@ -28,8 +31,6 @@ The data retrieved above only includes one page of a four-page table. I need to 
 
 ```{r}
 pages <- c("","page=1","page=2","page=3")
-isis.merge <- data.frame()
-end <- data.frame
 for(i in 1:length(pages)){
   isis.url <- paste("http://securitydata.newamerica.net/isis/analysis",pages[i],sep="?")
   isis.url <- htmlParse(isis.url)
@@ -42,6 +43,7 @@ for(i in 1:length(pages)){
 isis.data <- isis.data_1 %>% merge(.,isis.data_2,all=T) %>% merge(.,isis.data_3,all=T) %>% merge(.,isis.data_4,all=T)
 head(isis.data)
 dim(isis.data)
+
 #converting the dates
 isis.data$date <- as.Date(isis.data$date,"%B %d, %Y")
 #date summary
@@ -49,10 +51,117 @@ summary(isis.data$date)
 isis.data %>% summarize(min=min(date),max=max(date),timespan=max-min)
 ```
 
+Here is a simple plot of the distribution of this data across time. 
+```{r}
+#simple time plot
+ggplot(isis.data,aes(x=date)) + geom_density(fill="red",alpha=.07) + theme_bw() +  ggtitle("ISIS Activity in Iraq \n via reports of ISIS territorial occupation") + theme(plot.title = element_text(lineheight=.8, face="bold"))
+```
+
+And here is breaking up the distribution across different controling groups. 
+```{r}
+plot <- ggplot(isis.data,aes(x=date)) + geom_histogram(aes(fill=control),binwidth=10) + theme_bw() +  ggtitle("Activity in Iraq in 2014") + theme(plot.title = element_text(lineheight=.8, face="bold")) + facet_grid(control~.) +xlab("Time Line") + ylab("number of reported events") 
+plot 
+```
+
+### Syria Data
+
+Need occupation data for Syria as well. There is a useful timeline of ISIS activity in Syria on [Wikipedia]("http://en.wikipedia.org/wiki/Inter-rebel_conflict_during_the_Syrian_Civil_War"). Though Wikipedia isn't considered a credible source, retrieving data from this sight will be much more difficult than from the above, and thus good as an exercise in trying to retrieve more fickle data. 
+
+```{r}
+require(rvest)
+require(stringr)
+wiki.url <- html("http://en.wikipedia.org/wiki/Inter-rebel_conflict_during_the_Syrian_Civil_War")
+raw.dates <- html_nodes(wiki.url,".mainarticle+ p , h3+ p , p+ p")
+text.dates <- html_text(raw.dates) %>% data.frame(.)
+colnames(text.dates) <- "raw_text"
+text.dates$raw_text <- as.character(text.dates$raw_text)
+
+#Spliting the text chuncks up
+library(devtools)
+require(data.table)
+source_gist(11380733)
+df2 <- cSplit(text.dates, "raw_text", sep = ".", direction = "long")
+text.dates <- as.data.frame(df2)
+
+#Removing footnote residuals from online, e.g. [#]
+gsub("\\[|\\]", "","[1] This cat.")
+text.dates%>% filter(str_detect(text.dates$raw_text,"\\[|\\]"))
 
 
+#Partialing out date info
+text.dates$truncated_string <- str_sub(text.dates$raw_text,start=0,end=28) #first 28 characters
+text.dates$day <-NA
+text.dates$month <-NA
+#Isolating Day and Month
+months <- c("January","February","March","April","May","June","July","August","September")
+for(i in 1:nrow(text.dates)){
+  if(str_detect(text.dates$truncated_string[i],"\\d\\d")){
+    text.dates$day[i] <- str_extract_all(text.dates$truncated_string[i],"\\d\\d")
+    } else {
+      text.dates$day[i] <- str_extract_all(text.dates$truncated_string[i],"\\d")}
+  for(j in 1:length(months)){
+    if(str_detect(text.dates$truncated_string[i],months[j])){
+      text.dates$month[i] <- months[j]
+      }  
+      }  
+  }
+head(text.dates[,2:4])
 
+#Removing rows that failed to convert
+#These rows don't contain date or conquest information
+syria.data <- text.dates %>% filter(!is.na(month))
 
+#Adding year column
+syria.data$year <- 2014
+
+#Alteration to compounded dates
+#i.e. dates that == c("10","11")
+#Will choose the eariler of the two dates
+syria.data[31,3] 
+syria.data[31,3] <- "10"
+syria.data[33,3] #supposed to be "late" may
+syria.data[33,3] <- "20"
+syria.data[37,3] 
+syria.data[37,3] <- "21"
+syria.data[50,3] #Breaking up 2014, will use the start of the month
+syria.data[50,3] <- "1"
+
+#Combining dates
+#Here only months and year are really relevant. Since the maps will be done by month
+syria.data$date <- paste(syria.data$day,syria.data$month,syria.data$year,sep="-")
+syria.data$date <- as.Date(syria.data$date,format="%d-%B-%Y")
+head(syria.data[,6])
+syria.data %>% summarize(min=min(date),max=max(date),timespan=max-min)
+```
+
+Now I need a list of Syrian town names to computationally extract the relevant locations. I will use [another Wikipedia page]("http://en.wikipedia.org/wiki/List_of_cities_in_Syria") that contains a table with all the names. 
+
+```{r}
+towns.url <- html("http://en.wikipedia.org/wiki/List_of_cities_in_Syria")
+towns <- html_table(towns.url,fill=T) 
+towns <- data.frame(rbind(towns[[2]][1],towns[[3]][1]))
+colnames(towns) <- "city.names"
+head(towns,15) 
+#removing footnotes...e.g. [#]
+towns[1:7,] <- str_sub(towns[1:7,],end=-4)
+towns[8:13,] <- str_sub(towns[8:13,],end=-5)
+towns <- towns %>% filter(!city.names=="n/a")
+head(towns,3) 
+```
+
+Using the list of Syrian towns, I will extract the correct location from the vignettes in the ISIS Syrian movement data. Finally, a few qualitative distinctions will have to be made, since not all the vignettes refer to territorial control 
+
+```{r}
+for(i in 1:nrow(syria.data)){
+  for(j in 1:nrow(towns)){
+     if(str_detect(syria.data$raw_text[i],towns[j,])){
+       syria.data$location[i] <- towns[j,]}
+  }
+}
+head(syria.data[,6:7],5) #Here we have Isis troop locations matched with their dates.
+
+for(i in 1:nrow(syria.data)){
+```
 
 
 

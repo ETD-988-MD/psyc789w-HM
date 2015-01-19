@@ -4,7 +4,7 @@ author: "Eric Dunford"
 date: "January 17, 2015"
 output: html_document
 ---
-```{r}
+```{r,results="hide",echo=F}
 #Packages
 lapply(c("dplyr","foreign","reshape2"),library,character.only=T) 
 #quick way to load multiple packages
@@ -137,7 +137,6 @@ html_session(boyhood.url) %>% follow_link("see full cast & crew")
 
 See [XML walkthrough - Columbia](http://www.columbia.edu/~cjd11/charles_dimaggio/DIRE/styled-4/styled-6/code-13/)
 
-
 For this initial example we will be pulling from the [following URL]("http://apps.saferoutesinfo.org/project_list/results.cfm")
 ```{r}
 library(XML)
@@ -163,7 +162,7 @@ head(top5,5)
 ```
 
 Here is code for when there are multiple tables on a page. The example uses the following [Tornado]("http://www.cdc.gov/mmwr/preview/mmwrhtml/mm6128a3.htm?s_cid=mm6128a3_e%0d%0a")
-```{r}
+```{r,}
 tornados<-htmlParse("http://www.cdc.gov/mmwr/preview/mmwrhtml/mm6128a3.htm?s_cid=mm6128a3_e%0d%0a")
 tornado.tables<- readHTMLTable(tornados,stringsAsFactors = FALSE)
 length(tornado.tables)
@@ -181,11 +180,70 @@ tail(tornado.tables[[3]])
 
 You can loop through the multiple tables and extract the pieces of data that you want. 
 
-### 'RCurl' approach
-```{r}
-require(RCurl)
+### Building a "scrapper"
 
+Back to the [Cambridge Tutorials]("http://quantifyingmemory.blogspot.com/2014/02/web-scraping-part2-digging-deeper.html") The code from the previous tutorial left off here. 
+
+```{r}
+require(rjson)
+url  <- "http://stats.grok.se/json/en/201201/web_scraping"
+raw.data <- readLines(url, warn="F") 
+rd  <- fromJSON(raw.data)
+rd.views <- rd$daily_views 
+rd.views <- unlist(rd.views)
+rd <- as.data.frame(rd.views)
+rd$date <- rownames(rd)
+rownames(rd) <- NULL
+head(rd)
+```
+
+The information is scrapped from the sight -- though the tutorial left off with the best way to set up a more sustainable scrape that doesn't require as much effort to get set up. 
+
+#### Using functions to ease the process
+
+```{r}
+getData <- function(url){
+  require(rjson)
+  raw.data <- readLines(url, warn="F") 
+  rd  <- fromJSON(raw.data)
+  rd.views <- rd$daily_views 
+  rd.views <- unlist(rd.views)
+  rd <- as.data.frame(rd.views)
+  rd$date <- rownames(rd)
+  rownames(rd) <- NULL
+  rd$date <- as.Date(rd$date)
+  return(rd)
+}
+
+getData("http://stats.grok.se/json/en/201201/web_scraping") %>% head(.)
+```
+
+Building a function can mechanize the process (as long as you account for the parts that might vary).
+
+#### Creating the URL
+```{r}
+getUrls <- function(y1,y2,term){
+  root <- "http://stats.grok.se/json/en/"
+    urls <- NULL
+    for (year in y1:y2){
+      for (month in 1:9){
+        urls <- c(urls,(paste(root,year,0,month,"/",term,sep="")))
+      }
+    
+      for (month in 10:12){
+      	urls <- c(urls,(paste(root,year,month,"/",term,sep="")))
+    	}
+    }
+    return(urls)
+}
 ```
 
 
-### `scrapeR` appraoch
+
+
+
+
+
+
+
+
