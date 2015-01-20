@@ -76,17 +76,18 @@ text.dates <- html_text(raw.dates) %>% data.frame(.)
 colnames(text.dates) <- "raw_text"
 text.dates$raw_text <- as.character(text.dates$raw_text)
 
-#Spliting the text chuncks up
-library(devtools)
-require(data.table)
-source_gist(11380733)
-df2 <- cSplit(text.dates, "raw_text", sep = ".", direction = "long")
-text.dates <- as.data.frame(df2)
-
-#Removing footnote residuals from online, e.g. [#]
-gsub("\\[|\\]", "","[1] This cat.")
-text.dates%>% filter(str_detect(text.dates$raw_text,"\\[|\\]"))
-
+      # #Spliting the text chuncks up
+      # library(devtools)
+      # require(data.table)
+      # source_gist(11380733)
+      # df2 <- cSplit(text.dates, "raw_text", sep = ".", direction = "long")
+      # text.dates <- as.data.frame(df2)
+      # 
+      # str_trim(text.dates$raw_text)
+      # 
+      # #Removing footnote residuals from online, e.g. [#]
+      # gsub("\\[|\\]", "","[1] This cat.")
+      # text.dates%>% filter(str_detect(text.dates$raw_text,"\\[|\\]"))
 
 #Partialing out date info
 text.dates$truncated_string <- str_sub(text.dates$raw_text,start=0,end=28) #first 28 characters
@@ -159,8 +160,17 @@ for(i in 1:nrow(syria.data)){
   }
 }
 head(syria.data[,6:7],5) #Here we have Isis troop locations matched with their dates.
+```
 
-for(i in 1:nrow(syria.data)){
+The final piece of the puzzle yielded what I needed; however, I'm not confident this returned the information that I wanted (i.e. this would suffice if I were interested in counting up the number of ISIS-based events that occured or if I wanted to create a general timeline of activity, but not for creating a map of troop progress).
+
+Given my limited web-scrapping skills, I will now see if I can't pull directly from a map. 
+```{r}
+map.url <- html("http://www.longwarjournal.org/archives/2014")
+raw.map <- html_nodes(map.url,".entry-date , #content h1")
+map <- html_text(raw.map) %>% data.frame(.)
+
+html_attrs(raw.map)
 ```
 
 
