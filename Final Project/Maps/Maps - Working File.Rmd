@@ -1,0 +1,29 @@
+---
+title: "Maps - ISIS Progress - Working File"
+output: html_document
+---
+
+Mapping Data
+
+```{r}
+require(maps)
+x <- map.text("world", "iraq") # iran and iraq
+iraq <- cbind(x$x,x$y) %>% as.data.frame 
+iraq <- iraq %>% filter(!is.na(V1))
+ggplot(iraq,aes(x=V1,y=V2)) + geom_polygon()
+
+
+#Another approach
+require(RgoogleMaps)
+Iraq <- GetMap("Iraq",zoom=5) 
+
+
+
+#And Another approach
+require(ggmap)
+iraq <- map_data(map="world")
+countries <- c("Iraq","Syria","Iran","Turkey")
+iraq <- subset(iraq,region=="Iraq"|region=="Syria") 
+ggplot(iraq) + geom_polygon(aes(x=long,y=lat))
+```
+
