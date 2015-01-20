@@ -13,6 +13,42 @@ require(XML)
 url <- "http://www.bbc.com/news/world-europe-30878406"
 raw.data <- getURL(url,encoding="UTF-8")
 parsed.data <- htmlParse(raw.data)
-xpathSApply(parsed.data,"//h1",xmlValue)
+
+xpathSApply(parsed.data,"//h1",xmlValue) #title
+xpathSApply(parsed.data,
+            "//*[@id='main-content']/div[2]/div[1]/span[1]/span[1]",
+            xmlValue) #publishing date
+xpathSApply(parsed.data,"//*[@id='main-content']/div[2]/div[1]/p",xmlValue) #story
+```
+
+Let's see if this pattern holds across other bbc stories.
+```{r}
+url <- "http://www.bbc.com/news/world-asia-30902237"
+raw.data <- getURL(url,encoding="UTF-8")
+parsed.data <- htmlParse(raw.data)
+
+xpathSApply(parsed.data,"//h1",xmlValue) #title
+xpathSApply(parsed.data,
+            "//*[@id='main-content']/div[2]/div[1]/span[1]/span[1]",
+            xmlValue) #publishing date
+xpathSApply(parsed.data,"//*[@id='main-content']/div[2]/div[1]/p",xmlValue) #story
+```
+
+It worked! So now we need a loop to find all the stories for a particular subject.
+
+```{r}
+url <- "http://www.bbc.com/news/world-asia-30902237"
+
+#Webscrapper just for title and date of story
+bbcScrapper <- function(url){
+  raw.data <- getURL(url,encoding="UTF-8")
+  parsed.data <- htmlParse(raw.data)
+  story.title <- xpathSApply(parsed.data,"//h1",xmlValue) 
+  story.date <- xpathSApply(parsed.data,
+                            "//*[@id='main-content']/div[2]/div[1]/span[1]/span[1]",
+                            xmlValue) 
+  c(story.title,story.date)
+  }
+bbcScrapper("http://www.bbc.com/news/technology-30879637")
 ```
 
