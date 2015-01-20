@@ -1,0 +1,18 @@
+---
+title: "Web_Scrapping Practice"
+output: html_document
+---
+
+Will attempt to scrape the following url. http://www.bbc.com/news/world-europe-30878406
+
+The goal is to build a data frame of all the top stories of the day. 
+```{r}
+require(rjson)
+require(RCurl)
+require(XML)
+url <- "http://www.bbc.com/news/world-europe-30878406"
+raw.data <- getURL(url,encoding="UTF-8")
+parsed.data <- htmlParse(raw.data)
+xpathSApply(parsed.data,"//h1",xmlValue)
+```
+
