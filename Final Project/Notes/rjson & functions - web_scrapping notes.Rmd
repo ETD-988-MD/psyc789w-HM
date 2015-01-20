@@ -9,7 +9,7 @@ lapply(c("dplyr","foreign","reshape2","ggplot2","rjson","XML","RCurl"),library,c
 #quick way to load multiple packages
 ```
 
-The following will outline my attempts at web-scrapping. Below the `json`, `XML`, and `RCurl` packages will be utilized to scrap data from the web. I heavily used an online tutorial based of a Cambridge class that can be found [here](http://www.r-bloggers.com/web-scraping-the-basics/).
+The following will outline my attempts at web-scrapping. Below the `json`, `XML`, and `RCurl` packages will be utilized to scrap data from the web. I heavily used an online tutorial based of a Cambridge class that can be found [here]("http://www.r-bloggers.com/web-scraping-the-basics/").
 
 ### rjson approach for simple webscrapping
 
@@ -96,7 +96,7 @@ This is a "simple" web-scrapping methodology because it's retrieving from a (rel
 
 ### Building a "scrapper"
 
-Back to the [Cambridge Tutorials]("http://quantifyingmemory.blogspot.com/2014/02/web-scraping-part2-digging-deeper.html") The code from the previous tutorial left off here. 
+Specifically pulling from part 2 of the [Cambridge Tutorial]("http://quantifyingmemory.blogspot.com/2014/02/web-scraping-part2-digging-deeper.html") The code from the previous tutorial left off here. 
 
 ```{r}
 require(rjson)
@@ -134,7 +134,10 @@ getData("http://stats.grok.se/json/en/201201/web_scraping") %>% head(.)
 
 Building a function can mechanize the process (as long as you account for the parts that might vary).
 
-#### Creating the URL
+#### Creating URL Function
+
+This function seeks to alter the temporal pieces of the URL in order to create a vector of urls contained within a specified time period.
+
 ```{r}
 getUrl <- function(y1,y2,term){
   root <- "http://stats.grok.se/json/en/"
@@ -165,18 +168,16 @@ for (url in urls){
 }
 head(results)
 
-ggplot(tail(results,100),aes(date,rd.views))+geom_line(color="blue")+theme_black()
+ggplot(tail(results,100),aes(date,rd.views))+geom_line(color="blue")#+theme_bw()
 ```
 
 This can be powerful way to retrieve large amounts of information. 
 
 ### Downloading the web page
 
-**Getting to know HTML structure**
+#### Getting to know HTML structure
 
-[http://en.wikipedia.org/wiki/Euromaidan]("http://en.wikipedia.org/wiki/Euromaidan")
-
-Let's look at this webpage
+Let's look at this webpage: [http://en.wikipedia.org/wiki/Euromaidan]("http://en.wikipedia.org/wiki/Euromaidan")
 
 - Headings
 - Images
@@ -184,7 +185,7 @@ Let's look at this webpage
 - references
 - tables
 
-To look at the code (in Google Chrome), right-click somewhere on the page and select 'inspect element'
+To look at the code (in Google Chrome), right-click somewhere on the page and select **'inspect element'**.
 
 Tree-structure (parents, siblings)
 
@@ -193,7 +194,7 @@ Tree-structure (parents, siblings)
 HTML tags.
 
 They come in pairs and are surrounded by these guys:
-<>
+`<>`
 
 e.g. a heading might look like this:
 
@@ -230,14 +231,16 @@ Which others do you know or can you find?
 
 **Download the web page**
 
-XML Parser: Parses an XML or HTML file or string containing XML/HTML content, and generates an R structure representing the XML/HTML tree. 
+`XML Parser` Parses an XML or HTML file or string containing XML/HTML content, and generates an R structure representing the XML/HTML tree. 
 
 ```{r}
 require(RCurl)
 require(XML)
 
 url <- "http://en.wikipedia.org/wiki/Euromaidan"
-SOURCE <-  getURL(url,encoding="UTF-8") #Download the page
+SOURCE <-  getURL(url,encoding="UTF-8") #Download the page. 
+#Note that this function is part of RCurl and not what we made above.
+
 #this is a very very long line. Let's not print it. Instead:
 substring(SOURCE,1,200) #Way of extracting pieces of the string, since the whole file is very large
 PARSED <- htmlParse(SOURCE) #Format the html code
@@ -266,7 +269,7 @@ length(xpathSApply(PARSED, "//a/@href"))
 
 ### CSS and Xpath
 
-web-designers use Cascading Style Sheets to determine the way a webpage looks. Like variables: change the style, rather than the every item on a page. <strong>CSS allows us to make better selections, by latching onto tags</strong>.**Xpath allows us to move up and down the html tree structure**. CSS can be an html **attribute**
+web-designers use Cascading Style Sheets to determine the way a webpage looks. Like variables: change the style, rather than the every item on a page. <strong>CSS allows us to make better selections, by latching onto tags</strong>.**Xpath allows us to move up and down the html tree structure**. CSS can be an html **attribute**. Tree-structure is navigated a bit like that on your computer (c:/windows/system)
 
 Here is an example of getting the references:
 ```{r}
@@ -278,6 +281,75 @@ head(xpathSApply(PARSED, "//span[@class='citation news']/a/@href"),1)
 
 ```{r}
 links <- (xpathSApply(PARSED, "//span[@class='citation news']/a/@href"))
+browseURL(links[1]) #This is pretty neat. It takes you right to the linked page.
 ```
 
+>Note: the `browseURL()` function take you right to a specified URL.
 
+#### Fundamental XPath Syntax
+
+- /      Select from the root
+- //     Select anywhere in document
+- @      Select attributes. Use in square brackets
+
+In this example, we select all elements of 'span'
+...Which have an **attribute** "class" of the value "citation news"
+...then we select all links
+...and return all attributes labeled "href" (the urls)
+
+e.g. `..."//span[@class='citation news']/a/@href"`
+
+Like in R, we use square brackets to make selections. Example: `head(xpathSApply(PARSED, "//span[@class='citation news'][17]/a/@href"))`
+
+We can also use "wildcards" (i.e. fuzzy identifiers that don't demand a specific classification).
+- * selects any node or tag
+- @* selects any attribute (used to define nodes)
+
+```{r}
+(xpathSApply(PARSED, "//*[@class='citation news'][17]/a/@href"))
+(xpathSApply(PARSED, "//span[@class='citation news'][17]/a/@*"))
+```
+
+You can use functions, e.g. for **partial matches**. This is useful if there are subtle variations within or between pages.
+```{r eval=F}
+head(xpathSApply(PARSED, "//span[starts-with(@class,'citation')][17]/a/@href"))
+head(xpathSApply(PARSED, "//span[contains(@class,'citation')][17]/a/@href"))
+```
+
+**_Example syntax_**
+`[function(attribute,string)]`
+
+#### BBC Example
+
+```{r}
+url <- "http://www.bbc.co.uk/news/world-europe-26333587"
+SOURCE <- getURL(url,encoding="UTF-8")
+PARSED <- htmlParse(SOURCE)
+xpathSApply(PARSED, "//h1[@class='story-header']",xmlValue)
+
+bbcScraper <- function(url){
+  SOURCE <-  getURL(url,encoding="UTF-8")
+  PARSED <- htmlParse(SOURCE)
+  title=(xpathSApply(PARSED, "//h1[@class='story-header']",xmlValue))
+  date=as.character(xpathSApply(PARSED, "//meta[@name='OriginalPublicationDate']/@content"))
+  return(c(title,date))
+}
+bbcScraper("http://www.bbc.co.uk/news/world-middle-east-26333533")
+bbcScraper("http://www.bbc.co.uk/sport/0/football/26332893")
+
+#issue with the retrieving all the meta-data (the date in the above case)
+bbcScraper2 <- function(url){
+  title=date=NA #Return empty values in case field not found
+  SOURCE <-  getURL(url,encoding="UTF-8") 
+  PARSED <- htmlParse(SOURCE)
+  title=(xpathSApply(PARSED, "//h1[@class='story-header']",xmlValue))
+  date=(xpathSApply(PARSED, "//meta[@name='OriginalPublicationDate']/@content"))
+  if (is.null(date)){
+    date=(xpathSApply(PARSED, "//span[@class='date']",xmlValue))
+  }
+  return(c(title,as.character(date)))
+}
+bbcScraper2("http://www.bbc.co.uk/sport/0/football/26332893")
+```
+
+Here is where I try and build my own scrapper - see practice file. 
