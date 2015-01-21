@@ -354,7 +354,8 @@ bbcScraper2("http://www.bbc.co.uk/sport/0/football/26332893")
 
 Here is where I try and build my own scrapper - see practice file. 
 
-### Next Lesson ("Week 3")
+Next Lesson ("Week 3")
+-----------------------
 
 See the [link]("http://quantifyingmemory.blogspot.com/2014/03/web-scraping-scaling-up-digital-data.html").
 
@@ -362,8 +363,8 @@ Here we are trying to scale this process up so that we can scrape multiple urls 
 ```{r}
 #Here is the code for the bbcScrapper from last time. 
 bbcScraper <- function(url){
-  require(RCurl)
-  require(XML)
+  #require(RCurl)
+  #require(XML)
   SOURCE <-  getURL(url,encoding="UTF-8")
   PARSED <- htmlParse(SOURCE,encoding="UTF-8")
   title=xpathSApply(PARSED, "//h1[@class='story-header']",xmlValue)
@@ -414,10 +415,10 @@ Entering URLs by hand is tedious. We can speed this up by automating the collect
 * Scraping URLs in a search result
 * those on the front page
 
-Running a search on Nigeria using bbc returns the following url `http://www.bbc.co.uk/search?q=Nigeria`.
+Running a search on Nigeria using bbc returns the following url `http://www.bbc.co.uk/search?v2=true&page=1&q=Russia#page=4`. Make sure you run through to the next page so that you get the apgination pattern. 
 ```{r}
 #Retrieving all the links from the search
-url<-"http://www.bbc.co.uk/search?q=Russia&sa_f=search-serp"
+url<-"http://www.bbc.co.uk/search?v2=true&page=1&q=Russia#page=4"
 SOURCE <-  getURL(url,encoding="UTF-8")
 PARSED <- htmlParse(SOURCE)
 xpathSApply(PARSED, "//a/@href")
@@ -425,23 +426,363 @@ xpathSApply(PARSED, "//a/@href")
 
 Here we need to partial out only unique links
 ```{r}
-unique(xpathSApply(PARSED,"//a/@href")) 
-unique(xpathSApply(PARSED, "//*[@id='orb-modules']"))
+unique(xpathSApply(PARSED, "//ol[2]/li[1]/article/div/h1/a/@href"))
+unique(xpathSApply(PARSED, "//*[@id='orb-modules']/section[3]/ol[1]/li[1]/article/div"))
+unique(xpathSApply(PARSED,"//section[3]/ol/li/a/@href")) 
 
 #This provides us with all the links...we only need the news related ones. 
-targets <- unique(xpathSApply(PARSED,"//a[@id='orb-modules']"))
-results <- ldply(targets[1:5],bbcScraper) #only the first 5 pages
+require(plyr)
+targets <- unique(xpathSApply(PARSED,"//section/ol/li/article/a/@href"))
+targets[1:5]
+results <- ldply(targets[1:5],bbcScraper) #only the first 5 links
 results
 ```
 
+Here I will run a scrapper that accounts for pagination. 
+
+```{r}
+bbcSearchURL <- function(search.url,pages){
+  urls <- list()
+  urls[1] <- search.url
+  for(i in 2:pages){
+    urls[i] <- paste0(search.url,"#page=",i)
+    }
+  return(urls)
+}
+url <- "http://www.bbc.co.uk/search?q=Russia&sa_f=search-serp"
+urls <- bbcSearchURL(url,4)
+urls
+
+#Let's build this into the BBC scraper
+bbcScraper2 <- function(url,pages=NULL){
+  require(RCurl)
+  require(XML)
+  if(!is.null(pages)){
+    bbcSearchURL <- function(url,pages){
+      urls <- NA
+      urls[1] <- url
+      for(i in 2:pages){
+        urls[i] <- paste0(url,"#page=",i)
+        }
+      return(urls)
+      }
+    urls <- bbcSearchURL(url,pages)
+    results <- data.frame(title=NA,date=NA)
+    for(i in 1:length(urls)){
+      temp.url <- urls[i]
+      SOURCE <-  getURL(temp.url,encoding="UTF-8")
+      PARSED <- htmlParse(SOURCE,encoding="UTF-8")
+      results$title[i]<- xpathSApply(PARSED, "//h1[@class='story-header']",xmlValue)
+      results$date[i]<- as.character(xpathSApply(PARSED, "//meta[@name='OriginalPublicationDate']/@content"))
+      if (is.null(date))    results$date[i] <- NA
+      if (is.null(title))    results$title[i] <- NA
+    }
+    } else {
+      results <- data.frame(title=NA,date=NA)
+      SOURCE <-  getURL(url,encoding="UTF-8")
+      PARSED <- htmlParse(SOURCE,encoding="UTF-8")
+      results$title <- xpathSApply(PARSED, "//h1[@class='story-header']",xmlValue)
+      results$date <- as.character(xpathSApply(PARSED, "//meta[@name='OriginalPublicationDate']/@content"))
+      if (is.null(date))    results$date <- NA
+      if (is.null(title))    results$title <- NA
+    }
+  return(results)
+  }
+
+url <- "http://www.bbc.co.uk/search?q=Russia&sa_f=search-serp"
+bbcScraper2(url,pages=NULL)
+##THIS IS STILL IN DEVELOPMENT
+```
+
+### Automating downloads
+
+As with the newspaper articles, downloads are facilitated by getting the right links. Let's search for pdf files and downlod the first ten results:
+```{r}
+url <- "http://lib.ru/GrepSearch?Search=pdf" #So "free" Russian lit site
+
+SOURCE <-  getURL(url,encoding="UTF-8") # Specify encoding when dealing with non-latin characters
+PARSED <- htmlParse(SOURCE)
+links <- (xpathSApply(PARSED, "//a/@href"))
+links[grep("pdf",links)][1]
+```
+
+Note: anything that is downloaded will be saved in the working directory. 
+
+```{r,eval=F}
+#Making the link the appropriate format
+links <- paste0("http://lib.ru",links[grep("pdf",links)])
+links[1]
+
+#Now the the first 3 PDFs
+require(stringr)
+for (i in 1:3){
+  parts <- unlist(str_split(links[i],"/"))
+  outName <- parts[length(parts)]
+  print(outName)
+  download.file(links[i],outName)
+}
+```
+
+The material has been downloaded directly into my working directory. Though if this process were to be implemented a greater level of precision and checks would have to follow, since the process is time intensive. 
+
+### Using APIs
+
+From Wikipedia:
+
+> With Ajax, web applications can send data to, and retrieve data from, a server asynchronously (in the background) without interfering with the display and behavior of the existing page. Data can be retrieved using the XMLHttpRequest object. Despite the name, the use of XML is not required (JSON is often used instead.
+
+How does this work?
+
+- You load the webpage
+- There is a script in the code.
+- As well as placeholders, empty fields
+- The script runs, and executes the Ajax call. 
+- This connects, in this case, with the Facebook API
+- the API returns data about the page from Facebook's servers
+- The JQuery syntax interprets the JSON and fills the blanks in the html
+- The user sees the number of shares.
+
+Problem: when we download the page, we see only the first three steps. 
+Solution: intercept the Ajax call, or, go straight to the source
+
+Here is the working example used for retrieving the number of shares and likes from Facebook via a news article. 
+
+```{r}
+fqlQuery='select share_count,like_count,comment_count from link_stat where url="'
+url="http://www.theguardian.com/world/2014/mar/03/ukraine-navy-officers-defect-russian-crimea-berezovsky"
+queryUrl = paste0('http://graph.facebook.com/fql?q=',fqlQuery,url,'"')  #ignoring the callback part
+lookUp <- URLencode(queryUrl) #What do you think this does?
+lookUp
+```
+
+Pasting this into the URL returns the following.
+
+```
+{
+   "data": [
+      {
+         "share_count": 390,
+         "like_count": 428,
+         "comment_count": 232
+      }
+   ]
+}
+```
+
+This process (purportedly) works for any URL. Here the author provides another example. 
+```{r}
+require(rjson)
+url="http://quantifyingmemory.blogspot.com/2014/02/web-scraping-basics.html"
+queryUrl = paste0('http://graph.facebook.com/fql?q=',fqlQuery,url,'"')  #ignoring the callback part
+lookUp <- URLencode(queryUrl)
+rd <- readLines(lookUp, warn="F") 
+dat <- fromJSON(rd)
+dat
+
+#Grabbing numbers from the list
+dat$data[[1]]$like_count;dat$data[[1]]$share_count;dat$data[[1]]$comment_count
+```
+
+APIs are really useful: we don't (normally!) have to worry about terms of use
+
+Next Lesson ("Week 4")
+-----------------------
+
+This 4th and final lesson can be found [here]("http://quantifyingmemory.blogspot.com/2014/03/web-scraping-working-with-apis.html")
+
+### Digital data collection
+
+Goals:
+
+* Devise means of accessing data
+* Retrieve that data
+* Tabulate and store the data
+
+APIs allow applications to communicate with each other. Examples of this would be:
+
+- Amazon API allows web-sites to link directly to products - up-to-date prices, option to buy
+- Buying stuff online: verification of credit-card data
+- Smartphone apps: e.g. for accessing Twitter
+- Maps with location data, e.g. Yelp
+- Share content between social networking sites
+- Embed videos
+- Log in via Facebook
+
+Wikipedia:
+
+> When used in the context of web development, an API is typically defined as a set of Hypertext Transfer Protocol (HTTP) request messages, along with a definition of the structure of response messages, which is usually in an Extensible Markup Language (XML) or JavaScript Object Notation (JSON) format.
+
+- Out: HTTP request
+- In: JSON or XML 
+
+We can handle both processes through R.
+
+Using the code from above:
+```{r}
+fqlQuery='select share_count,like_count,comment_count from link_stat where url="'
+url="http://www.theguardian.com/world/2014/mar/03/ukraine-navy-officers-defect-russian-crimea-berezovsky"
+queryUrl = paste0('http://graph.facebook.com/fql?q=',fqlQuery,url,'"')  #ignoring the callback part
+lookUp <- URLencode(queryUrl) 
+lookUp
+require(rjson)
+rd <- readLines(lookUp, warn="F") 
+dat <- fromJSON(rd)
+dat
+```
+
+This works, but how do we make it all work together in a more fluid way?
+
+Here is the process:
+
+First, **Find an API**
+
+  - See [http://www.programmableweb.com/apis/directory]("http://www.programmableweb.com/apis/directory") for a usable api directory.
+
+Let's use Google map (See J. Gonzalez's work on [utilizing the Google Maps api with R]("http://www.jose-gonzalez.org/using-google-maps-api-r/#.VMAQJy7F_NR") . This could be really useful!)
+
+Wrapper functions in package `dismo` (also explore packages ggmaps, maptools)
+
+Two APIs of interest:
+
+1. **geo location**
+  - See [https://developers.google.com/maps/documentation/geocoding/]("https://developers.google.com/maps/documentation/geocoding/")
+    - required parameters
+      - address [place]
+      - sensor [=false]
+    - options: bounds,key,language, region
+  -Query:
+    - See [https://maps.googleapis.com/maps/api/geocode/json?]("https://maps.googleapis.com/maps/api/geocode/json?")
+    - address=Kremlin,Moscow
+    - sensor=false
+    - separate with '&'
+    - E.g. `https://maps.googleapis.com/maps/api/geocode/json?address=Kremlin,Moscow&sensor=false`
+
+Writing a function for this material.
+
+```{r}
+getUrl <- function(address,sensor = "false") {
+ root <- "http://maps.google.com/maps/api/geocode/json?"
+ u <- paste0(root,"address=", address, "&sensor=false")
+ return(URLencode(u))
+}
+getUrl("Kremlin, Moscow")
+```
 
 
+Now putting this to use.
+```{r}
+require(RJSONIO)
+target <- getUrl("Kremlin, Moscow")
+dat <- fromJSON(target)
+latitude <- dat$results[[1]]$geometry$location["lat"]
+longitude <- dat$results[[1]]$geometry$location["lng"]
+place <- dat$results[[1]]$formatted_address
+latitude;longitude;place
+```
+
+These geo codes can be **EXTREMELY** useful when creating maps from existing datasets. 
+    
+2. **static maps**
+
+See [here]("https://developers.google.com/maps/documentation/staticmaps/") for the nitty gritty via Google.
+
+What you need to account for:
+
+* base="http://maps.googleapis.com/maps/api/staticmap?center=""
+* center= latitude (e.g 55.75), longitude (e.g. 37.62)
+  + OR: centre =place (Kremlin, Moscow)
+* zoom (1= zoomed right out, 18 zoomed right in)
+* maptype="hybrid" #satellite, hybrid, terrain, roadmap
+* suffix = "&size=800x800&sensor=false&format=png""
+
+Example:
+`http://maps.googleapis.com/maps/api/staticmap?center=55.75,37.62&zoom=13&maptype=hybrid&size=800x800&sensor=false&format=png`
+
+Constructing this type of URL in R using paste
+```{r}
+base="http://maps.googleapis.com/maps/api/staticmap?center="
+latitude=55.75
+longitude=37.62
+zoom=13
+maptype="hybrid"
+suffix ="&size=800x800&sensor=false&format=png"
+target <- paste0(base,latitude,",",longitude,
+                 "&zoom=",zoom,"&maptype=",maptype,suffix)
+target
+```
+
+Next we download the map
+```{r,eval=F}
+download.file(target,"test.png",mode="wb")
+```
+
+### Other ways of harvesting APIs
+
+#### Twitter
+
+Works much like the Facebook API
+
+```{r}
+url="http://www.theguardian.com/uk-news/2014/mar/10/rise-zero-hours-contracts"
+target=paste0("http://urls.api.twitter.com/1/urls/count.json?url=",url)
+rd <- readLines(target, warn="F") 
+dat <- fromJSON(rd)
+shares <- dat$count
+shares
+```
 
 
+#### Yandex Maps
 
+Yandex maps (and retrieving information from them) is very similar to Google maps. See [here]("http://api.yandex.com/maps/doc/staticapi/1.x/dg/concepts/input_params.xml") for the details. USe the code from above to harvest this information. 
 
+#### YouTube
 
+See [here]("https://developers.google.com/youtube/2.0/developers_guide_protocol_audience") for the details.
 
+Important pieces of the puzzle to keep in mind: 
+
+* **Video stats** (id = video ID, e.g. “Ya2elsR5s5s”): url=paste0(“https://gdata.youtube.com/feeds/api/videos/”,id,“?v=2&alt=json”)
+
+* **Comments** (id = video ID, e.g. “Ya2elsR5s5s”): url=paste0(“http://gdata.youtube.com/feeds/api/videos/”,id,“/comments?v=2&alt=json”)
+
+* **Search** (ukrainian protests): url=“https://gdata.youtube.com/feeds/api/videos?q=ukrainian+protests&alt=json”
+
+Application:
+```{r}
+require(dplyr)
+require(stringr)
+require(lubridate)
+id <- "T5ENwwozALc" #video id
+target=paste0("http://gdata.youtube.com/feeds/api/videos/",id,"?v=2&alt=json")
+rd <- readLines(target,warn="F") 
+dat <- fromJSON(rd)
+ave.rating <- dat$entry$`gd$rating`$average
+views <- dat$entry$`yt$statistics`[[2]]
+length <- dat$entry$`media$group`$`media$thumbnail`[[4]]$time
+title <- dat$entry$title
+published <- unlist(str_split(dat$entry$published,"T"))[1] %>% as.Date()
+
+#FUNCTION: pulling video stats
+YouTubeStats <- function(id){
+  require(dplyr)
+  require(stringr)
+  require(lubridate)
+  target=paste0("http://gdata.youtube.com/feeds/api/videos/",id,"?v=2&alt=json")
+  rd <- readLines(target,warn="F") 
+  dat <- fromJSON(rd)
+  ave.rating <- dat$entry$`gd$rating`$average
+  views <- dat$entry$`yt$statistics`[[2]]
+  length <- dat$entry$`media$group`$`media$thumbnail`[[4]]$time
+  title <- dat$entry$title
+  published <- unlist(str_split(dat$entry$published,"T"))[1] %>% as.Date()
+  data <- data.frame(title,published,length,views,ave.rating)
+  return(data)
+}
+YouTubeStats("3mjpjbOVo-I") #Different URL
+#Works!
+
+```
 
 
 
