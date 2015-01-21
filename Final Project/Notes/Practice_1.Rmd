@@ -41,6 +41,8 @@ url <- "http://www.bbc.com/news/world-asia-30902237"
 
 #Webscrapper just for title and date of story
 bbcScrapper <- function(url){
+  require(RCurl)
+  require(XML)
   raw.data <- getURL(url,encoding="UTF-8")
   parsed.data <- htmlParse(raw.data)
   story.title <- xpathSApply(parsed.data,"//h1",xmlValue) 
@@ -49,6 +51,36 @@ bbcScrapper <- function(url){
                             xmlValue) 
   c(story.title,story.date)
   }
-bbcScrapper("http://www.bbc.com/news/technology-30879637")
+bbcScrapper("http://www.bbc.com/news/science-environment-30888767")
 ```
+
+Let's step this up. Here I will scan three BBC articles and pur them into a dataframe. 
+
+```{r}
+urls <- c("http://www.bbc.com/news/world-us-canada-30908095","http://www.bbc.com/news/world-europe-30907443","http://www.bbc.com/news/science-environment-30888767")
+
+#Expanding the function to deal for when date is NULL
+bbcScrapper <- function(url){
+  require(RCurl)
+  require(XML)
+  raw.data <- getURL(url,encoding="UTF-8")
+  parsed.data <- htmlParse(raw.data)
+  story.title <- xpathSApply(parsed.data,"//h1",xmlValue) 
+  story.date <- xpathSApply(parsed.data,
+                            "//*[@id='main-content']/div[2]/div[1]/span[1]/span[1]",
+                            xmlValue) 
+  if (is.null(story.date)){
+    story.date <- xpathSApply(parsed.data, "//span[@class='date']",xmlValue)
+  }
+  return(c(story.title,as.character(story.date)))
+  }
+bbc <- sapply(urls,bbcScrapper) %>% data.frame
+head(bbc)
+
+#Another more efficient approach...if not a little archaic.
+require(plyr)
+bbc <- ldply(urls,bbcScrapper)
+bbc
+```
+
 

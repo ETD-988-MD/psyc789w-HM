@@ -353,3 +353,98 @@ bbcScraper2("http://www.bbc.co.uk/sport/0/football/26332893")
 ```
 
 Here is where I try and build my own scrapper - see practice file. 
+
+### Next Lesson ("Week 3")
+
+See the [link]("http://quantifyingmemory.blogspot.com/2014/03/web-scraping-scaling-up-digital-data.html").
+
+Here we are trying to scale this process up so that we can scrape multiple urls simultaneously. 
+```{r}
+#Here is the code for the bbcScrapper from last time. 
+bbcScraper <- function(url){
+  require(RCurl)
+  require(XML)
+  SOURCE <-  getURL(url,encoding="UTF-8")
+  PARSED <- htmlParse(SOURCE,encoding="UTF-8")
+  title=xpathSApply(PARSED, "//h1[@class='story-header']",xmlValue)
+  date=as.character(xpathSApply(PARSED, "//meta[@name='OriginalPublicationDate']/@content"))
+  if (is.null(date))    date <- NA
+  if (is.null(title))    title <- NA
+  return(c(title,date))
+}
+
+urls <- c("http://www.bbc.co.uk/news/business-26414285","http://www.bbc.co.uk/news/uk-26407840","http://www.bbc.co.uk/news/world-asia-26413101","http://www.bbc.co.uk/news/uk-england-york-north-yorkshire-26413963")
+results=NULL
+for(url in urls){
+  newEntry <- bbcScraper(url)
+  results <- rbind(results,newEntry)
+}
+data.frame(results) #the results are stored as a matrix
+```
+
+The disadvantage of looping is that we stor the data in an inefficient way.
+```{r}
+temp = NULL
+temp <- rbind(temp,results[1,])
+temp <- rbind(temp,results[2,])
+temp <- rbind(temp,results[3,])
+temp #This is a matrix
+```
+
+In each case we are copying the whole table in order to add a single line. This is (above all things) slow and we need to keep two copied in memory (means we can only ever use at most half of computer's RAM).
+
+A more efficient way is to use `sapply()`.
+```{r}
+#Urls again
+urls <- c("http://www.bbc.co.uk/news/business-26414285","http://www.bbc.co.uk/news/uk-26407840","http://www.bbc.co.uk/news/world-asia-26413101","http://www.bbc.co.uk/news/uk-england-york-north-yorkshire-26413963")
+sapply(urls,bbcScraper)
+```
+
+And `plyr` can be used here -- note that this is old code that needs to be revisited in lue of `dplyr` -- the `ldply()` function essentially runs a function across a list and then returns a dataframe, which is super useful given what we're doing. 
+```{r}
+require(plyr)
+dat <- ldply(urls,bbcScraper) 
+dat
+```
+
+#### Link Harvesting
+
+Entering URLs by hand is tedious. We can speed this up by automating the collection of links. How can we find relevant links?
+
+* Scraping URLs in a search result
+* those on the front page
+
+Running a search on Nigeria using bbc returns the following url `http://www.bbc.co.uk/search?q=Nigeria`.
+```{r}
+#Retrieving all the links from the search
+url<-"http://www.bbc.co.uk/search?q=Russia&sa_f=search-serp"
+SOURCE <-  getURL(url,encoding="UTF-8")
+PARSED <- htmlParse(SOURCE)
+xpathSApply(PARSED, "//a/@href")
+```
+
+Here we need to partial out only unique links
+```{r}
+unique(xpathSApply(PARSED,"//a/@href")) 
+unique(xpathSApply(PARSED, "//*[@id='orb-modules']"))
+
+#This provides us with all the links...we only need the news related ones. 
+targets <- unique(xpathSApply(PARSED,"//a[@id='orb-modules']"))
+results <- ldply(targets[1:5],bbcScraper) #only the first 5 pages
+results
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
