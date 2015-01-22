@@ -1,0 +1,38 @@
+---
+title: ""
+author: 
+output: html_document
+---
+```{r}
+lapply(c("RCurl","XML","dplyr","rjson","RJSONIO"),library,character.only=T)
+```
+
+
+
+
+
+ 
+```{r}
+url <- "https://www.google.com/webhp?sourceid=chrome-instant&ion=1&espv=2&ie=UTF-8#q=big%20brown%20cows"
+
+Source <- getURL(url,encoding="UTF-8")
+Parsed <- htmlParse(Source)
+x <- xpathSApply(Parsed,"//a/@href") %>% unlist %>% as.data.frame
+head(x,3)
+names(x) <- "var1"
+x$var1 <- x$var1 %>% as.character
+
+grep("bigpictureagriculture",x,fixed=TRUE)
+grep("google",x)
+
+#It's difficult to trudge the google search engine. 
+
+```
+
+
+
+
+
+
+
+
