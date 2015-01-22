@@ -1,0 +1,64 @@
+---
+title: "Geo-Location Scraper"
+output: html_document
+---
+
+The goal here is to build a function where the input is a country name and the output is data frame containing the name of every town in that country and it's longitude and latitude location (geo-code) for maping purposes. The function will require multiple web scrappers: one pulling from Google maps, the other from Wikipedia. The goal of this is to create an easy data frame of geo-codes on demand. Further extensions of this project will also attempt to include ethnicities in the output so that by entering a simple country name, the research is returned with the geographical location of all the towns match with all ethnic groups that (purportedly) live in those locations. 
+
+Below I will construct this function piecemeal, and then include the final result toward the end. 
+
+### Wikipedia Scrapper - Town names. 
+
+```{r}
+require(rjson)
+require(RCurl)
+require(RJSONIO)
+url <- "https://github.com/David-Haim/CountriesToCitiesJSON/blob/master/countriesToCities.json"
+data <- getURL(url)
+data <- rjson::fromJSON(url)
+
+data <- read.table("/Users/edunford/Desktop/ad.txt",header=T,sep=",",fill = T)
+fileName <- '/Users/edunford/Desktop/worldcitiespop.txt'
+readChar(fileName,nchars=100)
+```
+
+#### Twitter API
+
+```{r}
+
+```{r}
+fqlQuery='select share_count,like_count,comment_count, comment_content from link_stat where url="'
+url="http://www.theguardian.com/world/2014/mar/03/ukraine-navy-officers-defect-russian-crimea-berezovsky"
+queryUrl = paste0('http://graph.facebook.com/fql?q=',fqlQuery,url,'"')  #ignoring the callback part
+lookUp <- URLencode(queryUrl) #What do you think this does?
+lookUp
+require(rjson)
+rd <- readLines(lookUp, warn="F") 
+dat <- fromJSON(rd)
+dat
+```
+
+
+
+
+Now putting this to use.
+```{r}
+require(RJSONIO)
+getUrl <- function(address,sensor = "false") {
+ root <- "http://maps.google.com/maps/api/geocode/json?"
+ u <- paste0(root,"address=", address, "&sensor=false")
+ return(URLencode(u))
+}
+getUrl("Kremlin, Moscow")
+
+
+target <- getUrl("Accra,Ghana")
+dat <- fromJSON(target)
+latitude <- dat$results[[1]]$geometry$location["lat"]
+longitude <- dat$results[[1]]$geometry$location["lng"]
+place <- dat$results[[1]]$formatted_address
+latitude;longitude;place
+```
+
+
+

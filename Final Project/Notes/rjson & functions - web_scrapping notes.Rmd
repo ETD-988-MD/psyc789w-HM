@@ -363,8 +363,8 @@ Here we are trying to scale this process up so that we can scrape multiple urls 
 ```{r}
 #Here is the code for the bbcScrapper from last time. 
 bbcScraper <- function(url){
-  #require(RCurl)
-  #require(XML)
+  require(RCurl)
+  require(XML)
   SOURCE <-  getURL(url,encoding="UTF-8")
   PARSED <- htmlParse(SOURCE,encoding="UTF-8")
   title=xpathSApply(PARSED, "//h1[@class='story-header']",xmlValue)
@@ -785,6 +785,22 @@ YouTubeStats("3mjpjbOVo-I") #Different URL
 ```
 
 
+### Social APIs
+
+```{r}
+#Linkedin
+url="http://www.theguardian.com/uk-news/2014/mar/10/rise-zero-hours-contracts"
+target=paste0("http://www.linkedin.com/countserv/count/share?url=$",url,"&format=json")
+  rd <- readLines(target, warn="F") 
+  dat <- fromJSON(rd)
+
+#StumbleUpon
+url="http://www.theguardian.com/uk-news/2014/mar/10/rise-zero-hours-contracts"
+target=paste0("http://www.stumbleupon.com/services/1.01/badge.getinfo?url=",url)
+  rd <- readLines(target, warn="F") 
+  dat <- fromJSON(rd)
+
+```
 
 
 
