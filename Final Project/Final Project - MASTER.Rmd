@@ -1,0 +1,100 @@
+---
+title: "Final Project - PSYC789W - R Programming"
+author: "Eric Dunford"
+output: html_document
+---
+
+### Introduction
+
+The project I proposed in my initial proposal was a little more involved than I had expected. The project sought to create a web-scraper, collect data, and then map that data onto an interactive time-series map. After diving further into the demands of such a project, I realized that it might be best to take a step back and just focus on the scraping part of the project. 
+
+Below you will find a web-scraping function that pulls from the BBC. The goal was to build a function that generated a data frame of all the top stories with regard to some subject. The user should be capable of running queries within the function and to view the stories relevance by the degree of social media activity the story received  on Facebook. The output of the function generates an object as a data frame, orders that data frame by the stories relevancy, and formats the dates as Dates (via the `lubridate` function).
+
+All in all, this is just a small step toward the larger project that I initially outlined; however, I believe it to be sufficient for this course, given the parameters outlined in the syllabus. 
+
+### bbcStoryScrape() 
+
+As noted above, the following function scrapes relevant news topics given a query provided by the user. The function then returns a data frame of the BBCs most recent stories regarding that query. 
+
+```{r}
+bbcStoryScrape <- function(query){
+  require(dplyr)
+  require(rvest)
+  require(rjson)
+  require(XML)
+  require(lubridate)
+  require(plyr) #I know: having the two siblings together is a 'no no', but I need `ldply()`. So I'll live dangerously
+  url <- paste0("http://www.bbc.co.uk/search?q=",query)
+  links <- htmlParse(url) %>% html_nodes(".search-results article") %>% html_nodes("a") %>% html_attr("href") %>% unique %>% as.list
+  links <- gsub("programmes",NA,links)
+  links <- gsub("music",NA,links)
+  links <- gsub("blogs",NA,links)
+  links <- links[!is.na(links)]
+  bbcScraper <- function(url){
+    if(!is.character(url)){
+      return("Issue: Non-character value detected")
+      } else{
+        raw.data <- html(url)
+        if(is.null(html_node(raw.data,".date"))){
+          date <- html_node(raw.data,"td span") %>% html_text() %>% strtrim(.,width=35) %>% gsub("Last Updated:\\s\\w+,\\s","",.)
+          } else{
+            date <- html_node(raw.data,".date") %>% html_text()
+            }}
+    if(is.null(html_node(raw.data,".story-header")) & is.null(html_node(raw.data,".headlinestory b")) & !is.null(html_node(raw.data,".sh"))){
+      title <- html_node(raw.data,".sh") %>% html_text()
+      } else {if(is.null(html_node(raw.data,".story-header")) & is.null(html_node(raw.data,".headlinestory b"))){
+        title <- html_node(raw.data,".story-body__h1") %>% html_text() 
+        } else{if(!is.null(html_node(raw.data,".story-header")) & is.null(html_node(raw.data,".headlinestory b"))){
+          title <- html_node(raw.data,".story-header") %>% html_text() 
+          } else{
+            title <- html_node(raw.data,".headlinestory b") %>% html_text() 
+            }
+          }
+        }
+    if(!is.null(title) & !is.null(data)){
+      c(title,date)
+      }
+    }
+  data <- ldply(links,bbcScraper)
+  colnames(data) <- c("Headline","Date_Published")
+  Relevance <- function(url){
+    queryUrl = paste0('http://graph.facebook.com/fql?q=','select share_count,comment_count,like_count, total_count from link_stat where url="',url,'"') 
+    lookUp <- URLencode(queryUrl) 
+    rd <- readLines(lookUp, warn="F")
+    data <- fromJSON(rd)
+    output <- data.frame(Shares=data$data[[1]]$share_count,No.of.Comments=data$data[[1]]$comment_count,No.of.Likes=data$data[[1]]$like_count,Total=data$data[[1]]$total_count)
+    return(output)
+    }
+  SM_data <- ldply(links,Relevance)
+  output <- cbind(data,SM_data)
+  output$link <- links
+  #Arrange the output in descending order
+  output <- arrange(output,desc(Total))
+  #Date formating
+  output$Date_Published <- output$Date_Published %>% as.Date(.,"%d %B %Y")
+  output
+  }
+```
+
+Testing the function out.
+```{r,message=F,error=F}
+bbcStoryScrape("Saudi Arabia")
+```
+
+### Persisting Issues
+
+It is important to note that the function has difficulty dealing with older stories (i.e. stories that hit the web around the turn of the century). This is due to the structure of the BBC website during that time period, which was much different 15 years ago than it was today. This issue, though outstanding, can still be resolved. Rather, it requires the addition of more conditional elements in the function to deal with the alternative structure.  
+
+Also, the function doesn't discriminate by language; thus, it's capable of pulling news stories in other languages, which can present date formatting issues (and general readability issues). I'm still working my way through that. 
+
+### Conclusion
+
+I hope you enjoyed the function. Though still fragile (given different search terms, it is still possible to break the function), I think it is a good first step in the right direction. Within political science, the data generating process can be quite arduous -- since we primarily rely on observational data. Thus, learning alternative processes to the data generating process can be useful down the line. 
+
+I look forward to your feedback and appreciate all your help during the course of the class. 
+
+
+
+
+
+

@@ -1,11 +1,12 @@
 ---
-title: "Web_Scrapping Practice"
+title: "BBC News Scraper - Walk through on Building the Function"
+author: "Eric Dunford - PSYC789W - R-Programming"
 output: html_document
 ---
 
-Will attempt to scrape the following url. http://www.bbc.com/news/world-europe-30878406
+The goal is to build a function that generates a data frame of all the top stories of some subject. The user should be capable of running queries within the function and be able to view the stories relevance by the degree of social media activity the story received. 
 
-The goal is to build a data frame of all the top stories of the day. 
+### Initial Approach
 ```{r}
 require(rjson)
 require(RCurl)
@@ -54,7 +55,7 @@ bbcScrapper <- function(url){
 bbcScrapper("http://www.bbc.com/news/science-environment-30888767")
 ```
 
-Let's step this up. Here I will scan three BBC articles and pur them into a dataframe. 
+Let's step this up. Here I will scan three BBC articles and put them into a data frame. 
 
 ```{r}
 urls <- c("http://www.bbc.com/news/world-us-canada-30908095","http://www.bbc.com/news/world-europe-30907443","http://www.bbc.com/news/science-environment-30888767")
@@ -83,8 +84,7 @@ bbc <- ldply(urls,bbcScrapper)
 bbc
 ```
 
-
-### Rvest approach?
+### Taking an `rvest` approach
 
 ```{r}
 url <- "http://www.bbc.com/news/world-europe-30878406"
@@ -114,7 +114,7 @@ test <- ldply(urls,bbcScraper)
 test
 ```
 
-Here I've built the same kind of scraper, but in a more simplistic form (less scowering through HTML code)
+Here I've built the same kind of scraper, but in a more simplistic form (less searching through HTML code)
 
 Retrieving links form a search page.
 ```{r}
@@ -161,12 +161,10 @@ bbcScraper(1)
 
 Not a great repair, but let's see if it does the trick.
 ```{r}
-#Let's just remove the NAs 
 test2 <- ldply(links,bbcScraper) 
 head(test2)
 ```
 The scrapper isn't perfect. But for now (for these sets of links), it works.
-
 
 ### BBC Search Engine Function
 Now, let's build a master function where one can search, harvest the search links, and then get the title and publishing date of the story.
@@ -182,14 +180,14 @@ links <- links[!is.na(links)]
 links
 ```
 
-#______________________________________________________________________________stopped here
+------
 Worked! But we need it to scan the links from every possible search page (or at least 4 pages back or so)
 ```{r}
 #The best solution might just be a loop. 
 search <- "http://www.bbc.co.uk/search?q=" #search part of the URL
 query <- "Nigeria"
 for(i in 2:100){ #page 1 follows a different structure
-  url <- paste0(search,query,"#page=",i)
+  url <- paste0(search,query,"#page=",20)
   pg <- htmlParse(url)
   links <- pg %>% html_nodes(".search-results article") %>% html_nodes("a") %>% html_attr("href")  %>% unique %>% as.list
   links <- gsub("programmes",NA,links) 
@@ -198,6 +196,13 @@ for(i in 2:100){ #page 1 follows a different structure
   }
 ```
 Interesting...peeling across the pages doesn't really return unique results. I guess I won't move forward with that right now. 
+
+Attempting to "Jump" to the next page. I'm not a 100% the underlying functionality of this portion of the rvest package. 
+```{r}
+p <- html("http://www.bbc.co.uk/search?q=Nigeria")
+"http://www.bbc.co.uk/search?q=Nigeria" %>% html_session %>% jump_to() %>% html_nodes(".search-results article") %>% html_nodes("a") %>% html_attr("href")
+```
+------
 
 Now let's build this into a search function
 
@@ -245,33 +250,46 @@ Relevance("http://www.bbc.co.uk/news/magazine-30583512")
 ldply(links,Relevance) # good - handles higher processing
 ```
 
-Great! An easy way to assess the relevany of story (as per social media activity).
-
+Great! An easy way to assess the relevancy of a story (as per social media activity).
 
 ### Master function
-Good. Now I'll put it all together.
+
+Now I'll put it all together.
 
 ```{r}
 bbcStoryScrape <- function(query){
   require(dplyr)
   require(rvest)
   require(rjson)
+  require(XML)
+  require(lubridate)
   require(plyr) #I know: having the two siblings together is a 'no no', but I need `ldply()`. So I'll live dangerously
   url <- paste0("http://www.bbc.co.uk/search?q=",query)
   links <- htmlParse(url) %>% html_nodes(".search-results article") %>% html_nodes("a") %>% html_attr("href") %>% unique %>% as.list
   links <- gsub("programmes",NA,links)
+  links <- gsub("music",NA,links)
+  links <- gsub("blogs",NA,links)
   links <- links[!is.na(links)]
   bbcScraper <- function(url){
     if(!is.character(url)){
       return("Issue: Non-character value detected")
       } else{
         raw.data <- html(url)
-        date <- html_node(raw.data,".date") %>% html_text()
-        if(is.null(html_node(raw.data,".story-header"))){
-          title <- html_node(raw.data,".story-body__h1") %>% html_text() 
-          } else {
-            title <- html_node(raw.data,".story-header") %>% html_text() 
+        if(is.null(html_node(raw.data,".date"))){
+          date <- html_node(raw.data,"td span") %>% html_text() %>% strtrim(.,width=35) %>% gsub("Last Updated:\\s\\w+,\\s","",.)
+          } else{
+            date <- html_node(raw.data,".date") %>% html_text()
+            }}
+    if(is.null(html_node(raw.data,".story-header")) & is.null(html_node(raw.data,".headlinestory b")) & !is.null(html_node(raw.data,".sh"))){
+      title <- html_node(raw.data,".sh") %>% html_text()
+      } else {if(is.null(html_node(raw.data,".story-header")) & is.null(html_node(raw.data,".headlinestory b"))){
+        title <- html_node(raw.data,".story-body__h1") %>% html_text() 
+        } else{if(!is.null(html_node(raw.data,".story-header")) & is.null(html_node(raw.data,".headlinestory b"))){
+          title <- html_node(raw.data,".story-header") %>% html_text() 
+          } else{
+            title <- html_node(raw.data,".headlinestory b") %>% html_text() 
             }
+          }
         }
     if(!is.null(title) & !is.null(data)){
       c(title,date)
@@ -292,37 +310,14 @@ bbcStoryScrape <- function(query){
   output$link <- links
   #Arrange the output in descending order
   output <- arrange(output,desc(Total))
+  #Date formating
+  output$Date_Published <- output$Date_Published %>% as.Date(.,"%d %B %Y")
   output
   }
 temp <- bbcStoryScrape("Saudi Arabia")
 temp
 ```
 
-All the pieces appear to be working well together. 
+All the pieces appear to be working well together. That said, the function seems to be having difficulty dealing with old stories (around the turn of the century) when the structure of the BBC website was much different. This requires manual tweaking, which I might do later down the line, but thought was unnecessary at the moment. 
 
-
-
-
-
-
-
-
-
-
-
-Let's put this all together.
-
-```{r}
-
-```
-
-
-
-
-
-
-
-
-
-
-
+Also, the function doesn't discriminate by language; thus, it's capable of pulling news stories in other languages, which can present date issues. 
