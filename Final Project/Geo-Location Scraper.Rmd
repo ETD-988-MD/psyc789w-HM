@@ -22,24 +22,6 @@ fileName <- '/Users/edunford/Desktop/worldcitiespop.txt'
 readChar(fileName,nchars=100)
 ```
 
-#### Twitter API
-
-```{r}
-
-```{r}
-fqlQuery='select share_count,like_count,comment_count, comment_content from link_stat where url="'
-url="http://www.theguardian.com/world/2014/mar/03/ukraine-navy-officers-defect-russian-crimea-berezovsky"
-queryUrl = paste0('http://graph.facebook.com/fql?q=',fqlQuery,url,'"')  #ignoring the callback part
-lookUp <- URLencode(queryUrl) #What do you think this does?
-lookUp
-require(rjson)
-rd <- readLines(lookUp, warn="F") 
-dat <- fromJSON(rd)
-dat
-```
-
-
-
 
 Now putting this to use.
 ```{r}
@@ -59,6 +41,28 @@ longitude <- dat$results[[1]]$geometry$location["lng"]
 place <- dat$results[[1]]$formatted_address
 latitude;longitude;place
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -84,3 +84,245 @@ bbc
 ```
 
 
+### Rvest approach?
+
+```{r}
+url <- "http://www.bbc.com/news/world-europe-30878406"
+raw.data <- getURL(url,encoding="UTF-8")
+parsed.data <- htmlParse(raw.data)
+
+require(rvest)
+url <- "http://www.bbc.com/news/world-australia-30945303"
+raw.data <- xml(url)
+date <- xml_node(raw.data,".date") %>% html_text()
+title <- xml_node(raw.data,".story-header") %>% html_text()
+date;title 
+class(date)
+
+bbcScraper <- function(url){
+  raw.data <- html(url)
+  date <- html_node(raw.data,".date") %>% html_text()
+  title <- html_node(raw.data,".story-header") %>% html_text()
+  c(title,date) 
+}
+bbcScraper("http://www.bbc.com/news/world-us-canada-30908095")
+
+#Faster application
+require(plyr)
+urls <- c("http://www.bbc.com/news/world-us-canada-30908095","http://www.bbc.com/news/world-europe-30907443","http://www.bbc.com/news/science-environment-30888767")
+test <- ldply(urls,bbcScraper) 
+test
+```
+
+Here I've built the same kind of scraper, but in a more simplistic form (less scowering through HTML code)
+
+Retrieving links form a search page.
+```{r}
+require(XML)
+url<-"http://www.bbc.co.uk/search?v2=true&page=1&q=Russia#page=4"
+pg <- htmlParse(url)
+links <- pg %>% html_nodes(".search-results article") %>% html_nodes("a") %>% html_attr("href") %>% unique %>% as.list
+#Programs have an interactive format that doesn't work for our purposes. So I'm getting rid of it,
+links <- gsub("programmes",NA,links) 
+links <- links[!is.na(links)]
+```
+
+And then harvesting the data from them
+
+```{r,eval=F}
+test2 <- ldply(links[4],bbcScraper) 
+```
+
+But there are issues. I need a scraper that can work around NAs
+
+```{r}
+bbcScraper <- function(url){
+  require(rvest)
+  require(dplyr)
+  if(!is.character(url)){
+    return("Issue: Non-character value detected")
+    } else{
+      raw.data <- html(url)
+      date <- html_node(raw.data,".date") %>% html_text()
+      if(is.null(html_node(raw.data,".story-header"))){
+        title <- html_node(raw.data,".story-body__h1") %>% html_text() 
+      } else {
+        title <- html_node(raw.data,".story-header") %>% html_text() 
+        }
+      }
+  if(!is.null(title) & !is.null(data)){
+    c(title,date)
+    }
+  }
+bbcScraper("http://www.bbc.com/news/world-europe-17839672")
+bbcScraper(NA)
+bbcScraper(1)
+```
+
+Not a great repair, but let's see if it does the trick.
+```{r}
+#Let's just remove the NAs 
+test2 <- ldply(links,bbcScraper) 
+head(test2)
+```
+The scrapper isn't perfect. But for now (for these sets of links), it works.
+
+
+### BBC Search Engine Function
+Now, let's build a master function where one can search, harvest the search links, and then get the title and publishing date of the story.
+
+```{r}
+search <- "http://www.bbc.co.uk/search?q=" #search part of the URL
+query <- "Nigeria"
+url <- paste0(search,query)
+pg <- htmlParse(url)
+links <- pg %>% html_nodes(".search-results article") %>% html_nodes("a") %>% html_attr("href") %>% unique %>% as.list
+links <- gsub("programmes",NA,links) 
+links <- links[!is.na(links)]
+links
+```
+
+#______________________________________________________________________________stopped here
+Worked! But we need it to scan the links from every possible search page (or at least 4 pages back or so)
+```{r}
+#The best solution might just be a loop. 
+search <- "http://www.bbc.co.uk/search?q=" #search part of the URL
+query <- "Nigeria"
+for(i in 2:100){ #page 1 follows a different structure
+  url <- paste0(search,query,"#page=",i)
+  pg <- htmlParse(url)
+  links <- pg %>% html_nodes(".search-results article") %>% html_nodes("a") %>% html_attr("href")  %>% unique %>% as.list
+  links <- gsub("programmes",NA,links) 
+  links <- links[!is.na(links)]
+  assign(paste0("links",i),links)
+  }
+```
+Interesting...peeling across the pages doesn't really return unique results. I guess I won't move forward with that right now. 
+
+Now let's build this into a search function
+
+```{r}
+bbcResearch <- function(query){
+  require(dplyr)
+  url <- paste0("http://www.bbc.co.uk/search?q=",query)
+  links <- htmlParse(url) %>% html_nodes(".search-results article") %>% html_nodes("a") %>% html_attr("href") %>% unique %>% as.list
+  links <- gsub("programmes",NA,links)
+  links <- links[!is.na(links)]
+  return(links)
+}
+bbcResearch("Cancer")
+bbcResearch("Hoffman")
+bbcResearch("University of Maryland")
+```
+
+### Assessing how "popular a story is" - Relevancy
+
+Accessing the Facebook API to see how much these articles were shared.
+```{r}
+require(rjson)
+fqlQuery='select share_count,comment_count,like_count, total_count from link_stat where url="'
+url=links[1]
+queryUrl = paste0('http://graph.facebook.com/fql?q=',fqlQuery,url,'"')  #ignoring the callback part
+lookUp <- URLencode(queryUrl) 
+rd <- readLines(lookUp, warn="F") 
+data <- fromJSON(rd)
+data.frame(shares=data$data[[1]]$share_count,No.of.Comments=data$data[[1]]$comment_count,No.of.Likes=data$data[[1]]$like_count,total=data$data[[1]]$total_count)
+```
+
+This works. Let's turn it into a function.
+```{r}
+Relevance <- function(url){
+  require(rjson)
+  queryUrl = paste0('http://graph.facebook.com/fql?q=','select share_count,comment_count,like_count, total_count from link_stat where url="',url,'"') 
+  lookUp <- URLencode(queryUrl) 
+  rd <- readLines(lookUp, warn="F")
+  data <- fromJSON(rd)
+  output <- data.frame(shares=data$data[[1]]$share_count,No.of.Comments=data$data[[1]]$comment_count,No.of.Likes=data$data[[1]]$like_count,total=data$data[[1]]$total_count)
+  return(output)
+}
+Relevance("http://www.bbc.co.uk/news/uk-scotland-glasgow-west-30934937")
+Relevance("http://www.bbc.co.uk/news/magazine-30583512")
+ldply(links,Relevance) # good - handles higher processing
+```
+
+Great! An easy way to assess the relevany of story (as per social media activity).
+
+
+### Master function
+Good. Now I'll put it all together.
+
+```{r}
+bbcStoryScrape <- function(query){
+  require(dplyr)
+  require(rvest)
+  require(rjson)
+  require(plyr) #I know: having the two siblings together is a 'no no', but I need `ldply()`. So I'll live dangerously
+  url <- paste0("http://www.bbc.co.uk/search?q=",query)
+  links <- htmlParse(url) %>% html_nodes(".search-results article") %>% html_nodes("a") %>% html_attr("href") %>% unique %>% as.list
+  links <- gsub("programmes",NA,links)
+  links <- links[!is.na(links)]
+  bbcScraper <- function(url){
+    if(!is.character(url)){
+      return("Issue: Non-character value detected")
+      } else{
+        raw.data <- html(url)
+        date <- html_node(raw.data,".date") %>% html_text()
+        if(is.null(html_node(raw.data,".story-header"))){
+          title <- html_node(raw.data,".story-body__h1") %>% html_text() 
+          } else {
+            title <- html_node(raw.data,".story-header") %>% html_text() 
+            }
+        }
+    if(!is.null(title) & !is.null(data)){
+      c(title,date)
+      }
+    }
+  data <- ldply(links,bbcScraper)
+  colnames(data) <- c("Headline","Date_Published")
+  Relevance <- function(url){
+    queryUrl = paste0('http://graph.facebook.com/fql?q=','select share_count,comment_count,like_count, total_count from link_stat where url="',url,'"') 
+    lookUp <- URLencode(queryUrl) 
+    rd <- readLines(lookUp, warn="F")
+    data <- fromJSON(rd)
+    output <- data.frame(Shares=data$data[[1]]$share_count,No.of.Comments=data$data[[1]]$comment_count,No.of.Likes=data$data[[1]]$like_count,Total=data$data[[1]]$total_count)
+    return(output)
+    }
+  SM_data <- ldply(links,Relevance)
+  output <- cbind(data,SM_data)
+  output$link <- links
+  #Arrange the output in descending order
+  output <- arrange(output,desc(Total))
+  output
+  }
+temp <- bbcStoryScrape("Saudi Arabia")
+temp
+```
+
+All the pieces appear to be working well together. 
+
+
+
+
+
+
+
+
+
+
+
+Let's put this all together.
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
