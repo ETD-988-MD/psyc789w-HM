@@ -155,6 +155,7 @@ Data's in. Time to build the function.
 
 distGlimpse <- function(data){
   require(ggplot2)
+  require(gridExtra)
   col.names <- colnames(data)
   plot <- NA
   for(i in 1:length(data)){
@@ -163,7 +164,7 @@ distGlimpse <- function(data){
       plot <- NA
       plot <- ggplot(data,aes(x=data[,i])) + 
         geom_histogram() + theme_bw() +
-        xlab(col.names[i]) + ggtitle(paste("Variable:",toupper(col.names[i]))) + 
+        xlab(col.names[i]) + ggtitle(toupper(col.names[i])) + 
         theme(plot.title = element_text(lineheight=1, face="bold"))
       assign(paste("plot",i,sep="_"),plot)
       } else { if(is.character(data[,i])){
@@ -178,8 +179,18 @@ distGlimpse <- function(data){
       }
       }
     } 
-  }    
-}
+  list <- seq(1,length(data))
+  
+  lapply(get(paste0("plot_",list[2])),grid.arrange)
+  
+  
+  for(i in 1:length(data)){
+    grid.arrange(get(paste0("plot_",i)),get(paste0("plot_",i)),get(paste0("plot_",i)),ncol=1)
+  }
+  
+  }
+
+
 distGlimpse(pp)
 
 #This is as far as I got....but it's coming along!
