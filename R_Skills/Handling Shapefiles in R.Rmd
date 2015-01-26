@@ -1,0 +1,67 @@
+---
+title: "Dealing With Shape Files"
+output: html_document
+---
+
+### Quick Take Aways
+
+* `file.choose()` is a quick function to access the file selection of your computer, e.g. `read.csv(file.choose())` -- only downside is that you won't have the file path in your computer, which complicates an use of knitr.
+* Useful source for the `ggmap` package can be found [here]("https://www.nceas.ucsb.edu/~frazier/RSpatialGuides/ggmap/ggmapCheatsheet.pdf")
+    + Using the `ggmap` package, you can quickly geocode a coordinate using `geocode()`, e.g. `geocode("University of Maryland")`
+
+### Reading "shapefiles" into R - e.g. `.shp` or `.shx`
+
+See [here]("http://www.r-bloggers.com/shapefiles-in-r/") for useful tutorial materials. 
+
+Geo-EPR dataset^[see Cederman et al. (2011). Politically Relevant Ethnic Groups across Space and Time: Introducing the GeoEPR Dataset. Conflict Management and Peace Science, 28(X), 423–437.]
+```{r,eval=F}
+#### Maptools approach ####
+library(maptools)
+require(ggplot2)
+require(RColorBrewer)
+require(ggmap)
+
+#reading in the shapefile - `maptools`
+area <- readShapePoly("/Users/edunford/Desktop/Geo-Coding/study_14206/Data/geoepr-v1.0/geoepr-20100212-1248.shp",delete_null_obj = T)
+
+#Map Colors `RColorBrewer`
+colors <- brewer.pal(9,"BuGn")
+
+### Create Base Map - `ggmap`
+#1. create the base environment and then plot it.
+mapWorld <- borders("world", colour="gray50", fill="gray50") #creates environment
+ggplot() + mapWorld + theme_bw()
+
+#2.
+mapImage <- get_map(location="center",
+  color = "color",
+  maptype = "terrain",
+  zoom = 3)
+ggmap(mapImage) #This only partially gets at what we need
+
+#Fortify the Shape File into a data frame - `ggplot2`
+    #This function is super useful when dealing with non-traditional data
+    #like shape files. 
+area.points <- fortify(area)
+head(area.points) 
+
+
+#put it all together
+ggmap(mapImage) + geom_polygon(aes(x = long,y=lat,group=group),data=area.points,color = colors[9],fill=colors[6],alpha=.5)
+
+#or
+
+ggplot() + mapWorld + theme_bw() + geom_polygon(aes(x = long,y=lat,group=group,fill=id),data=area.points,color = colors[9],alpha=.5) + theme(legend.position="none")
+
+```
+
+W/r/t the maps, ggmaps uses a google api, which allows for nice real time maps; however, this does a poor job at rendering a "world map." For this the second of the 1st of the two processes outlined above is preferred. 
+
+
+
+
+
+
+
+
+
