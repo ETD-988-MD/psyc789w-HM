@@ -1,0 +1,151 @@
+---
+title: "Reading in STATA 13 files"
+output: html_document
+---
+
+.dta files saved in STATA 13 present processing issues in R (and lower versions of STATA). This requires a package to process. 
+
+Code and working script pulled from [sjewo]("https://github.com/sjewo/readstata13")
+
+```{r,eval=T}
+require(devtools)
+devtools::install_github("sjewo/readstata13", ref="0.4")
+library(readstata13)
+data <- read.dta13(file.choose()) #Importing .dta STATA13 file...left path unspecified.
+```
+
+The data is now imported without issue. 
+
+------- 
+
+### Function Specifics
+
+Here is the function code from sjewo.
+```{r,eval=F}
+read.dta13 <- function (path, convert.factors = TRUE, fileEncoding = NULL, 
+    convert.underscore = FALSE, missing.type = FALSE, convert.dates = TRUE, 
+    replace.strl = FALSE) 
+{
+    if (length(grep("^(http|ftp|https)://", path))) {
+        tmp <- tempfile()
+        download.file(path, tmp, quiet = TRUE, mode = "wb")
+        filepath <- tmp
+        on.exit(unlink(filepath))
+    }
+    else {
+        filepath <- get.filepath(path)
+    }
+    if (!file.exists(filepath)) 
+        return(message("File not found."))
+    data <- stata(filepath, missing.type)
+    if (convert.underscore) 
+        names(data) <- gsub("_", ".", names(data))
+    types <- attr(data, "types")
+    stata.na <- data.frame(type = 65526L:65530L, min = c(101, 
+        32741, 2147483621, 2^127, 2^1023), inc = c(1, 1, 1, 2^115, 
+        2^1011))
+    if (missing.type) {
+        if (as.numeric(attr(data, "version")) >= 117L) {
+            missings <- vector("list", length(data))
+            names(missings) <- names(data)
+            for (v in which(types > 65525L)) {
+                this.type <- abs(types[v] - 65530L) + 1
+                nas <- is.na(data[[v]]) | data[[v]] >= stata.na$min[this.type]
+                natype <- (data[[v]][nas] - stata.na$min[this.type])/stata.na$inc[this.type]
+                natype[is.na(natype)] <- 0L
+                missings[[v]] <- rep(NA, NROW(data))
+                missings[[v]][nas] <- natype
+                data[[v]][nas] <- NA
+            }
+            attr(data, "missing") <- missings
+        }
+        else warning("'missing.type' only applicable to version >= 13 files")
+    }
+    val.labels <- attr(data, "val.labels")
+    type <- attr(data, "type")
+    label <- attr(data, "label.table")
+    if (!is.null(fileEncoding)) {
+        Encoding(names(data)) <- fileEncoding
+        names(data) <- enc2native(names(data))
+        Encoding(val.labels) <- fileEncoding
+        names(val.labels) <- enc2native(val.labels)
+        Encoding(names(label)) <- fileEncoding
+        names(label) <- enc2native(names(label))
+        if (length(label) > 0) {
+            for (i in 1:length(label)) {
+                Encoding(names(label[[i]])) <- fileEncoding
+                names(label[[i]]) <- enc2native(names(label[[i]]))
+            }
+            attr(data, "label.table") <- label
+        }
+        efi <- attr(data, "expansion.fields")
+        if (length(efi) > 0) {
+            efiChar <- unlist(lapply(efi, is.character))
+            for (i in (1:length(efi))[efiChar]) {
+                Encoding(efi[[i]]) <- fileEncoding
+                efi[[i]] <- enc2native(efi[[i]])
+            }
+            attr(data, "expansion.fields") <- efi
+        }
+        strl <- attr(data, "strl")
+        if (length(strl) > 0) {
+            for (i in 1:length(strl)) {
+                Encoding(strl[[i]]) <- fileEncoding
+                strl[[i]] <- enc2native(strl[[i]])
+            }
+            attr(data, "strl") <- strl
+        }
+    }
+    if (replace.strl) {
+        strl <- do.call(rbind, attr(data, "strl"))
+        for (j in seq(ncol(data))[types == 32768]) {
+            refs <- unique(data[, j])
+            for (ref in refs) {
+                if (length(strl[strl[, 1] == ref, 2]) != 0) {
+                  data[data[, j] == ref, j] <- strl[strl[, 1] == 
+                    ref, 2]
+                }
+            }
+        }
+        attr(data, "strl") <- NULL
+    }
+    convert_dt_c <- function(x) as.POSIXct((x + 0.1)/1000, origin = "1960-01-01")
+    convert_dt_C <- function(x) {
+        ls <- .leap.seconds + seq_along(.leap.seconds)
+        z <- (x + 0.1)/1000
+        z <- z - rowSums(outer(z, ls, ">="))
+        as.POSIXct(z, origin = "1960-01-01")
+    }
+    if (convert.dates) {
+        ff <- attr(data, "formats")
+        dates <- if (attr(data, "version") >= 8L) 
+            grep("^%(-|)(d|td)", ff)
+        else grep("%-*d", ff)
+        base <- structure(-3653L, class = "Date")
+        for (v in dates) data[[v]] <- structure(base + data[[v]], 
+            class = "Date")
+        for (v in grep("%tc", ff)) data[[v]] <- convert_dt_c(data[[v]])
+        for (v in grep("%tC", ff)) data[[v]] <- convert_dt_C(data[[v]])
+    }
+    if (convert.factors == T) {
+        vnames <- names(data)
+        for (i in seq_along(val.labels)) {
+            labname <- val.labels[i]
+            vartype <- type[i]
+            if (labname != "" & labname %in% names(label) & vartype > 
+                65527) {
+                if (all(unique(data[, i]) %in% label[[labname]])) {
+                  data[, i] <- factor(data[, i], levels = label[[labname]], 
+                    labels = names(label[[labname]]))
+                }
+                else {
+                  warning(paste("Missing factor labels for", 
+                    vnames[i], "- no labels assigned."))
+                }
+            }
+        }
+    }
+    return(data)
+}
+```
+

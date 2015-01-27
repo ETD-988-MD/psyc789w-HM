@@ -5,6 +5,14 @@ output: html_document
 
 Preliminary scan on the site material that Michael is looking to extract from Foreign Ministry sites. 
 
+## Resources 
+
+* CIA's "Chiefs of State and Cabinet Members of Foreign Governments" -- list can be found [here]("https://www.cia.gov/library/publications/world-leaders-1/index.html"). 
+    + Note: the html cycle works off a two letter country code. html is straightforward. 
+
+-----
+
+## The Scrape
 First, there are preliminary analytical tools that need to be studied further. 
 
 ### Web_Scraping (Building a More Efficient Scraper)

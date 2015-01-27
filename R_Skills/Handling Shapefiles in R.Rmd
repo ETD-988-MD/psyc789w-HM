@@ -39,7 +39,7 @@ area$COWGROUPID %>% length
 # Mapping the shapefile
 #---------
 
-#Map Colors `RColorBrewer`
+#Map Colors `RColorBrewer` - optional
 colors <- brewer.pal(9,"BuGn")
 
 ### Create Base Map - `ggmap`
@@ -59,6 +59,7 @@ ggmap(mapImage) #This only partially gets at what we need
     #like shape files. 
 area.points <- fortify(area)
 head(area.points) 
+names(area.points)
 
 
 #put it all together
@@ -70,7 +71,14 @@ ggplot() + mapWorld + theme_bw() + geom_polygon(aes(x = long,y=lat,group=group,f
 
 ```
 
-W/r/t the maps, ggmaps uses a google api, which allows for nice real time maps; however, this does a poor job at rendering a "world map." For this the second of the 1st of the two processes outlined above is preferred. 
+W/r/t the maps, ggmaps uses a google api, which allows for nice real time maps; however, this does a poor job at rendering a "world map." For this the second of the 1st of the two processes outlined above is preferred.
+
+>NOTE: I'm still unclear what is going on in the shape file underneath the hood. The `fortify()` function offers me the ability to put the data into a mapable form -- but GIS might still be the best way of going about this. 
+
+```{r}
+
+```
+
 
 
 
