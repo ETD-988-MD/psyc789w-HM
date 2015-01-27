@@ -1,0 +1,47 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+Preliminary scan on the site material that Michael is looking to extract from Foreign Ministry sites. 
+
+First, there are preliminary analytical tools that need to be studied further. 
+
+### Web_Scraping (Building a More Efficient Scraper)
+
+The following code is from [here]("http://stackoverflow.com/questions/24576962/how-write-code-to-web-crawling-and-scraping-in-r")...see the answer
+
+```{r}
+library(XML)
+library(httr)
+url <- "http://www.wikiart.org/en/claude-monet/mode/all-paintings-by-alphabet/"
+hrefs <- list()
+for (i in 1:23) {
+  response <- GET(paste0(url,i))
+  doc      <- content(response,type="text/html")
+  hrefs    <- c(hrefs,doc["//p[@class='pb5']/a/@href"])
+}
+url      <- "http://www.wikiart.org"
+xPath    <- c(pictureName = "//h1[@itemprop='name']",
+              date        = "//span[@itemprop='dateCreated']",
+              author      = "//a[@itemprop='author']",
+              style       = "//span[@itemprop='style']",
+              genre       = "//span[@itemprop='genre']")
+get.picture <- function(href) {
+  response <- GET(paste0(url,href))
+  doc      <- content(response,type="text/html")
+  info     <- sapply(xPath,function(xp)ifelse(length(doc[xp])==0,NA,xmlValue(doc[xp][[1]])))
+}
+pictures <- do.call(rbind,lapply(hrefs,get.picture))
+head(pictures)
+```
+
+
+
+### Scraping with Python
+First, [this]("http://docs.python-guide.org/en/latest/scenarios/scrape/") and [this]("http://learnpythonthehardway.org/book/ex5.html") for starters. 
+
+### Text Mining
+See [this]("http://cran.r-project.org/web/packages/tm/tm.pdf")
+
+

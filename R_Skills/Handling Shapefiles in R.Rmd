@@ -20,9 +20,24 @@ library(maptools)
 require(ggplot2)
 require(RColorBrewer)
 require(ggmap)
+require(dplyr)
 
+#---------
+#   Data
+#---------
 #reading in the shapefile - `maptools`
-area <- readShapePoly("/Users/edunford/Desktop/Geo-Coding/study_14206/Data/geoepr-v1.0/geoepr-20100212-1248.shp",delete_null_obj = T)
+area <- readShapePoly("Data/Geo-Coding/study_14206/Data/geoepr-v1.0/geoepr-20100212-1248.shp",delete_null_obj = T)
+#str(area) #Examining the structure of the shape file...long!
+names(area)
+class(area) 
+
+#Unique S4 structure - same indicators to EPR
+area$COWGROUPID %>% head 
+area$COWGROUPID %>% length
+
+#---------
+# Mapping the shapefile
+#---------
 
 #Map Colors `RColorBrewer`
 colors <- brewer.pal(9,"BuGn")
