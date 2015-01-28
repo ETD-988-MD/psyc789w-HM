@@ -1,10 +1,12 @@
 ---
-title: "Untitled"
+title: "Foreign Minister Scrape"
 output: html_document
 ---
 ### Quick take aways
 
 * `try(.,silent=T)` function allows you to process an error, return nothing, and then go on with the loop. But it will still give you back the error results if assigned to an object. 
+
+-----
 
 Preliminary scan on the site material that Michael is looking to extract from Foreign Ministry sites. 
 
@@ -12,6 +14,10 @@ Preliminary scan on the site material that Michael is looking to extract from Fo
 
 * CIA's "Chiefs of State and Cabinet Members of Foreign Governments" -- list can be found [here]("https://www.cia.gov/library/publications/world-leaders-1/index.html"). 
     + Note: the html cycle works off a two letter country code. html is straightforward. 
+* colfor.com for the FIBS country.codes (in order to make the HTML loop work) can be found [here](""http://www.cloford.com/resources/codes/index.htm"")
+
+
+----
 
 ### Chief of State and Cabinet Scraper
 
@@ -19,6 +25,8 @@ First, to build the simple version just focusing on Afghanistan.
 ```{r}
 require(rvest)
 require(dplyr)
+require(stringr)
+require(lubridate)
 url <- "https://www.cia.gov/library/publications/world-leaders-1/"
 request <- paste0(url,"AF",".html")
 raw.data <- html(request)
@@ -28,56 +36,55 @@ leader.data <- data.frame("Country"="AF","Office"=title,"office.holder"=leaders)
 head(leader.data)
 ```
 
-Now, to mechanize it.
-
-First, we need to find the correct coding procedure that matches up to the site's url. 
+Now, to mechanize it, but first, we need to find the correct coding procedure that matches up to the site's url. 
 ```{r}
-# library(countrycode)
-# require(stringr)
-# countrycode("Afghanistan","country.name","iso2c")
-# #Appears correct now in reverse.
-# countrycode("AF","iso2c","country.name")
-# countrycode("AD","fips104","country.name") #doesn't match ups with andorra
-
 #website using FIPS codeing - need to extract this code structure
 fibs.raw <- html("http://www.cloford.com/resources/codes/index.htm")
 countries <- html_nodes(fibs.raw,".outlinetable td:nth-child(3)") %>% html_text
 fibs <- html_nodes(fibs.raw,"p+ .outlinetable td:nth-child(5)") %>% html_text
-#Manual correction of mismatches with CIA website
-# fibs <- fibs[-4] # American Samoa
-# fibs <- fibs[-6] # Anguilla
-# fibs <- fibs[-27] # British Virgin Islands
-# fibs <- fibs[-35] # Cayman Islands
-```
-
-We need an array containing every country in the world. 
-```{r}
-# #country list from dept of state. 
-# WLraw <- html("http://www.state.gov/misc/list/")
-# country.list <- html_nodes(WLraw,"blockquote a") %>% html_text
-# #No convert into the iso2c
-# country <- countrycode(country.list,"country.name","iso2c") %>% data.frame 
-# colnames(country) <- "iso2c"
-# country <- arrange(country,iso2c)
-# head(country)
+fibs <- data.frame(country.name=countries[1:232],CCode=fibs)
+head(fibs)
 ```
 
 Now the application -- loop approach
-```{r}
-#leader.data <- data.frame(country=NA,office=NA,office.holder=NA)
+```{r, eval=F}
+temp.data <- data.frame(country=NA,country.code=NA,office=NA,office.holder=NA,date.last.updated=NA,date.retrieved=NA)
+leader.data <- data.frame(country=NULL,country.code=NULL,office=NULL,office.holder=NULL,date.last.updated=NULL,date.retrieved=NULL)
 url <- "https://www.cia.gov/library/publications/world-leaders-1/"
-for(i in 1:length(fibs)){
-  request <- paste0(url,fibs[i],".html")
+for(i in 1:nrow(fibs)){
+  request <- paste0(url,fibs[i,2],".html")
   if(!inherits(try(html(request),silent=T), 'try-error')){
     raw.data <- html(request)
     title <- html_nodes(raw.data,".title span") %>% html_text
     leaders <- html_nodes(raw.data,".cos_name span") %>% html_text
-    leader.data <- data.frame("Country"=fibs[i],"Office"=title,"office.holder"=leaders)
+    date <- html_node(raw.data,"#lastUpdateDate") %>% html_text %>% str_trim
+    #Storage
+    temp.data[1:length(title),"country"] <- fibs[i,1] %>% as.character
+    temp.data[1:length(title),"country.code"] <- fibs[i,2] %>% as.character
+    temp.data[1:length(title),"office"] <- title
+    temp.data[1:length(title),"office.holder"] <- leaders
+    temp.data[1:length(title),"date.last.updated"] <- format(dmy(date),"%m-%d-%Y")
+    temp.data[1:length(title),"date.retrieved"] <- format(Sys.Date(),"%m-%d-%Y")
+    leader.data <- rbind(leader.data,temp.data)
+    temp.data <- data.frame(country=NA,office=NA,office.holder=NA,date.retrieved=NA)
     } else{next}
   }    
-leader.data %>% nrow
+leader.data %>% nrow #5647 obs
+leader.data %>% select(country) %>% unique %>% nrow #191 countries
 head(leader.data)
+tail(leader.data)
 ```
+
+The loop retrieved a consistent and reliable list of Chiefs of State and their respective cabinets with appropriate date metadata and retrieval time stamps. Thus completing part 1 of the exercise.
+
+```{r, eval=F}
+#Saving time stamped version of the data 
+write.csv(leader.data,paste0("Data/CIA_World_Leaders_Data_",format(Sys.Date(),"%m.%d.%y"),".csv"))
+```
+
+
+
+
 
 
 
@@ -85,7 +92,7 @@ head(leader.data)
 -----
 
 ## The Scrape
-First, there are preliminary analytical tools that need to be studied further. 
+First, there are preliminary analytically tools that need to be studied further. 
 
 ### Web_Scraping (Building a More Efficient Scraper)
 
