@@ -82,6 +82,46 @@ The loop retrieved a consistent and reliable list of Chiefs of State and their r
 write.csv(leader.data,paste0("Data/CIA_World_Leaders_Data_",format(Sys.Date(),"%m.%d.%y"),".csv"))
 ```
 
+### Drawing from the Foreign Ministry sites.
+
+Taking a step in a new direction using the `httr` package. Just came out. Appears to have higher versatility with web extraction. First, see the instructions for the function, which can be found [here]("http://cran.r-project.org/web/packages/httr/httr.pdf") and [here]("http://cran.r-project.org/web/packages/httr/vignettes/quickstart.html")
+
+```{r}
+install.packages("httr")
+install.packages("stringi")
+require(httr)
+require(stringi)
+```
+
+
+```{r}
+#GET() gets urls
+google <- GET("http://google.com")
+#the function can get a whole range of things
+httr.cran <- content(GET("http://cran.r-project.org/web/packages/httr/httr.pdf")) #Extracted a PDF into a raw data format
+
+#handle()  preserves settings and cookies across multiple requests. 
+google <- handle("http://google.com")
+
+#HEAD() gets url headers
+HEAD("http://google.com")$header
+HEAD("http://bbc.com")$header
+
+
+r <- VERB("PROPFIND", "http://svn.r-project.org/R/tags/",add_headers(depth = 1), verbose())
+stop_for_status(r)
+content(r)
+
+bbc <- GET("http://www.bbc.com/news/world-latin-america-31033096")
+status_code(bbc)
+str(content(bbc))
+content(bbc,"text")
+#to figure out encoding
+stringi::stri_enc_detect(content(bbc, "raw"))
+content(bbc,"text",encoding="UTF-8")
+
+
+```
 
 
 
