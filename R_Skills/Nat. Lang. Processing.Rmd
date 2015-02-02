@@ -1,0 +1,24 @@
+---
+title: "Natural Language Processing"
+output: html_document
+---
+
+The following walkthrough was pulled from Rpub, which can be found [here]("https://rpubs.com/lmullen/nlp-chapter").
+
+First, a lot of the interfaces that R utilizes for language analysis require JAVA. This needs to be uploaded in the system manually before uploading the `rJava` package. Go [here]("http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html") to download the Java development kit.You will also need to download the new update from [apple]("http://support.apple.com/kb/DL1572").
+
+After downloading, check the terminal to see that Java has been uploaded. 
+ - `java -version`
+ - `which java` For the location on the system
+ - `sudo R CMD javareconf` to set up the path into R.
+
+```{r}
+install.packages("rJava")
+require(rJava)
+
+#Once installed, bring in all the relevant pacakges for NLP
+#"NLP", "openNLP", "RWeka", "qdap"
+install.packages("NLP")
+
+```
+

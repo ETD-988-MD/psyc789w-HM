@@ -1,0 +1,6 @@
+---
+title: '"Look Into" File'
+output: html_document
+---
+
+* `count()` package - http://cran.r-project.org/web/packages/COUNT/COUNT.pdf

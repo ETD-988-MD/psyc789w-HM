@@ -1,0 +1,118 @@
+---
+title: "Duration Counter"
+output: html_document
+---
+Duration (or count) variables are used in event history data to count the number of instances since an event occurred. The data typically looks like this:
+
+```{r}
+df <- data.frame("year"=c(1991:2000),"event"=c(0,0,1,0,0,0,0,0,1,0))
+df
+```
+
+Here the event is dichotomously coded. The duration counter works as follows:
+```{r}
+df1 <- data.frame("year"=c(1991:2000),"event"=c(0,0,1,0,0,0,0,0,1,0),"duration"=c(2,3,0,1,2,3,4,5,0,1))
+df1
+```
+
+The goal is to create the duration counter.
+
+### Creating the Counter
+
+```{r}
+#Using Fake Data
+df
+for(i in 1:nrow(df)){
+  if(df$event[i]==1){
+    df$counter[i] <- 0 
+    } else{ if(!i==1){
+      df$counter[i] <- df$counter[i-1] + 1
+      } else{df$counter[i] <- 1}
+      }
+  }
+df
+```
+
+The counter is successful, but this is relatively simple array of dates. Now I need to expand it to work around different forms of grouping. 
+
+### Handling groups
+
+```{r}
+#Again, using fake data, but this time adding groupings.
+df2 <- data.frame("group"=c(rep("Group_A",5),rep("Group_B",5)), "year"=c(1991:1995,1999:2003),"event"=c(0,0,1,0,0,0,0,0,1,0))
+df2
+
+#counter
+require(dplyr)
+no.groups <- as.character(unique(df2$group))
+for(j in 1:length(no.groups)){
+  temp <- df2 %>% filter(group==no.groups[j]) 
+  for(i in 1:nrow(temp)){
+    if(temp$event[i]==1){
+      temp$counter[i] <- 0 
+      } else{ if(!i==1){
+        temp$counter[i] <- temp$counter[i-1] + 1
+        } else{temp$counter[i] <- 1}
+        }
+    }
+  output <- rbind(output,temp)
+  temp <- NA
+  }
+output 
+```
+
+
+### Event History - Cubic Polynomial Function
+Following with the method outlined in Carter and Sigorino to deal with temporal dependence in event history data. The following will create the t, $t^2$, and $t^3$ necessary for the cubic polynomial approach. 
+
+```{r}
+#Another fake dataset
+df3 <- data.frame("group"=c(rep("Group_A",10),rep("Group_B",10),rep("Group_C",7)), 
+                  "year"=c(1991:2000,1999:2008,1945:1951),
+                  "event"=c(c(0,0,1,0,0,0,0,0,1,0),
+                  c(1,0,1,1,0,0,0,0,0,0),c(0,0,0,0,0,0,1)))
+
+
+csEvent <- function(data,date.var,event.var,grouping.var){
+  require(dplyr)
+  output <- NULL
+  #temp <- data.frame
+  no.of.groups <- as.character(unique(data[,grouping.var]))
+  for(j in 1:length(no.of.groups)){
+    temp <- filter(data,as.character(data[,grouping.var])==no.of.groups[j])
+    temp <- arrange(temp,temp[,date.var])
+    for(i in 1:nrow(temp)){
+      if(temp[,event.var][i]==1 & !is.na(temp[,event.var][i])){
+        temp$t[i] <- 0 
+        } else{ if(!i==1){
+          temp$t[i] <- temp$t[i-1] + 1
+          } else{temp$t[i] <- 1}
+          }
+      }
+    output <- rbind(output,temp)
+    temp <- NA
+    }
+  output$t2 <- output$t^2
+  output$t3 <- output$t^3
+  return(output)
+  }
+
+#Test the function
+csEvent(df2,"year","event","group")
+csEvent(df3,"year","event","group")
+```
+
+The function works for the fake data that we used to build the function, but now, I will test to see if it holds up when applied to real dataset. 
+
+For the test, I will use a working dataset that I am putting together for Birnir. "rebellion" is an indicator variable for whether there was a rebellion or not for that group country year. "ID" is a unique identifier for country-ethnic group.
+```{r}
+#Importing data
+amar.data <- read.csv("Data/Mobil.Data.Final.csv")
+amar.data <- amar.data %>% select(country:ID,polity2,rebellion)
+head(amar.data) 
+
+csEvent(amar.data,"year","rebellion","ID") %>% head(20)
+```
+
+The function works, though there are larger issues with the data (i.e. the ID variable is sometimes redundant for a year, the time like is not always consecutive, etc.). Future iterations of the function needs to take into account the years and whether or not they are consecutive. 
+
