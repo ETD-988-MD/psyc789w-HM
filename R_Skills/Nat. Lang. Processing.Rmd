@@ -19,6 +19,194 @@ require(rJava)
 #Once installed, bring in all the relevant pacakges for NLP
 #"NLP", "openNLP", "RWeka", "qdap"
 install.packages("NLP")
+install.packages("openNLP")
+install.packages("RWeka")
+install.packages("qdap")
 
+require(dplyr)
+#loading packages 
+require(NLP)
+require(openNLP)
+require(RWeka)
+require(qdap)
+
+#Lastly for the english dictionaries
+install.packages("openNLPmodels.en",
+                 repos = "http://datacube.wu.ac.at/",
+                 type = "source")
+require(openNLPmodels.en)
 ```
+
+With the packages in, we begin...
+
+### Language Recognition
+First, reading in a text file. Text file pulled from a news story on BBC. Here I will scrape the bbc just for the news story content.
+```{r}
+require(rvest)
+raw.data <- html("http://www.bbc.com/news/world-middle-east-31125835")
+story <- html_nodes(raw.data,".story-body > p") %>% html_text
+story
+#Story is imported
+
+#Cleaning - by removing the individual lines
+story <- paste(story, collapse = " ")
+story
+```
+
+The story pulled off the web isn't perfect but it is a realistic example of the kind of text I would be extracting from a scrape. 
+
+But for NLP we are obligated to use the `String` class. We need to convert our bio variable to a string.
+```{r}
+story <- as.String(story)
+```
+
+Next we need to create annotators for words and sentences. **Annotators** are created by functions which load the underlying Java libraries. These functions then mark the places in the string where words and sentences start and end. The annotation functions are themselves created by functions. So there is a lot going on underneith the hood here. 
+```{r}
+word_ann <- Maxent_Word_Token_Annotator()
+sent_ann <- Maxent_Sent_Token_Annotator()
+```
+
+These annotators form a “pipeline” for annotating the text in the `story` variable. First we have to determine where the sentences are, then we can determine where the words are. We can apply these annotator functions to our data using the `annotate()` function.
+```{r}
+require(NLP)
+require(openNLP)
+require(magrittr)
+#Note these packages are sensitive.
+#If it doesn't run, clear libraries and start again.
+
+#First a simple string. 
+story_annotations <- annotate(story,list(sent_ann,word_ann))
+class(story_annotations)
+head(story_annotations)
+```
+We see that the annotation object contains a list of sentences (and also words) identified by position. That is, the first sentence in the document begins at character 1 and ends at character 168. The sentences also contain information about the positions of the words that comprise them.
+
+We can combine the story and the annotations.
+```{r}
+story_doc <- AnnotatedPlainTextDocument(story, story_annotations)
+
+#Here we can look at the specific pieces
+sents(story_doc) %>% head(2)
+words(story_doc) %>% head(10)
+```
+
+### Annotating People and Places
+Among the several kinds of annotators provided by the openNLP package is an entity annotator. An entity is basically a proper noun, such as a person or place name. Using a technique called named entity recognition (NER), we can extract various kinds of names from a document. In English, OpenNLP can find dates, locations, money, organizations, percentages, people, and times. (Acceptable values are "date", "location", "money", "organization", "percentage", "person", "misc".) We will use it to find people, places, and organizations since all three are mentioned in our sample paragraph.
+
+These kinds of annotator functions are created using the same kinds of constructor functions that we used for word_ann() and sent_ann().
+```{r}
+person_ann <- Maxent_Entity_Annotator(kind = "person")
+location_ann <- Maxent_Entity_Annotator(kind = "location")
+organization_ann <- Maxent_Entity_Annotator(kind = "organization")
+date_ann <- Maxent_Entity_Annotator(kind = "misc") #not enough memory on my mac
+
+pipeline <- list(sent_ann,
+                 word_ann,
+                 person_ann,
+                 location_ann,
+                 organization_ann,
+                 date_ann)
+story_annotations <- annotate(story,pipeline)
+story_doc <- AnnotatedPlainTextDocument(story, story_annotations)
+```
+
+To Extract entities from an AnnotatedPlainTextDocument, we need to build a function that will do the job.
+```{r}
+# Extract entities from an AnnotatedPlainTextDocument
+entities <- function(doc, kind) {
+  s <- doc$content
+  a <- annotations(doc)[[1]]
+  if(hasArg(kind)) {
+    k <- sapply(a$features, `[[`, "kind")
+    s[a[k == kind]]
+  } else {
+    s[a[a$type == "entity"]]
+  }
+}
+```
+
+Now we can extract all of the named entities using entities(bio_doc), and specific kinds of entities using the kind = argument. Let’s get all the people, places, and organizations.
+```{r}
+entities(story_doc,kind = "person") %>% unique
+
+entities(story_doc,kind = "location") %>% unique
+
+entities(story_doc,kind = "organization") %>% unique
+
+entities(story_doc,kind = "date") %>% unique
+```
+
+The extraction isn't perfect. There are a lot of things that the algorythem gets wrong. For example, the arabic names don't get picted up, the some of the organizations are places and titles. That said, this could be useful when scraping larger bodies of text. 
+
+Let's try loading another language library
+```{r}
+#Spanish
+install.packages("openNLPmodels.es",
+                 repos = "http://datacube.wu.ac.at/",
+                 type = "source")
+require(openNLPmodels.es)
+
+#Danish
+install.packages("openNLPmodels.da",
+                 repos = "http://datacube.wu.ac.at/",
+                 type = "source")
+
+#Portuguese
+install.packages("openNLPmodels.pt",
+                 repos = "http://datacube.wu.ac.at/",
+                 type = "source")
+
+#Dutch
+install.packages("openNLPmodels.nl",
+                 repos = "http://datacube.wu.ac.at/",
+                 type = "source")
+
+
+
+
+string <- as.String("Este es mi padre Pablo. This is my father Paul.")
+
+#Now the annotator
+sent_ann <- Maxent_Sent_Token_Annotator(language ="es")
+word_ann <- Maxent_Word_Token_Annotator()
+person_ann <- Maxent_Entity_Annotator(language ="en",kind = "person")
+pipe <- list(sent_ann,word_ann,person_ann)
+string_annotated <- annotate(string,pipe)
+string_doc <- AnnotatedPlainTextDocument(string,string_annotated)
+entities(string_doc)
+```
+
+
+### Using the The Stanford Natural Language Processing Group system
+
+The same process can be implemented using the `StanfordCoreNLP`.
+```{r}
+install.packages("StanfordCoreNLP", repos = "http://datacube.wu.ac.at", type = "source")
+require(StanfordCoreNLP)
+```
+
+```{r}
+x <- paste("Stanford University is located in California.",
+           "It is a great university.")
+x
+p <- StanfordCoreNLP_Pipeline(NULL)
+y <- p(x)
+y[1][[1]]
+
+p <- StanfordCoreNLP_Pipeline()y <- p(x)
+y
+#or with the NLP package
+annotate(x, p)
+
+p <- StanfordCoreNLP_Pipeline(annotators= "ner")
+y <- p(x)
+y
+
+p <- StanfordCoreNLP_Pipeline("parse")
+y <- p(x)
+y
+p(y)
+```
+
+
 
