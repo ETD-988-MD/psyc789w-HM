@@ -1,0 +1,121 @@
+---
+title: "Learning tm package"
+output: html_document
+---
+Loading relevant packages
+```{r}
+require(tm)
+require(dplyr)
+require(rvest)
+require(lubridate)
+```
+
+The text mining package (`tm`) has a lot of versatility for some of the text processing text materials. 
+
+Goals: 
+
+1. scrape a PDF, 
+2. learn to store text files efficiently in one object
+3. learn the processing capabilities in the package. 
+
+First, before starting. We need some text material to draw from. I will scrape a news story and then I will try to draw a text file from a PDF.
+```{r}
+#Scrape NYTime story
+raw <- html("http://www.nytimes.com/2015/02/06/world/europe/kerry-biden-hollande-merkel-ukraine-conflict.html?hp&action=click&pgtype=Homepage&module=first-column-region&region=top-news&WT.nav=top-news&_r=0")
+title <- html_node(raw,"#story-heading") %>% html_text
+story <- html_nodes(raw,".story-body-text") %>% html_text
+story[1] #Now we have text to work with.
+```
+
+The main structure for managing documents in tm is a so-called Corpus, representing a collection of text
+documents. Corpora are R objects held fully in memory. Within the corpus constructor, x must be a Source object which abstracts the input location. `getSources()` lists available sources, and users can create their own sources
+
+```{r}
+getSources()
+getReaders()
+news.cor <- VCorpus(VectorSource(story))
+class(news.cor) 
+
+#The corpus can be saved.
+#writeCorpus(news.cor) #This is messy (creates a file for EVERY sentence)
+
+#Inspecting the corpus
+inspect(news.cor[1])
+```
+
+### Transforming Text
+All manipulation of the text can be performed using `map_tm()`. Examples of different text transformations
+```{r}
+#remove white space
+tm_map(news.cor, stripWhitespace) %>% .[1] %>% inspect
+
+#to lower case
+tm_map(news.cor, content_transformer(tolower)) %>% .[1] %>% inspect
+
+#removal of "stop words""
+tm_map(news.cor, removeWords, stopwords("english")) %>% .[1] %>% inspect
+
+#Stemming  (no clue what this does)
+tm_map(news.cor, stemDocument)  %>% .[1] %>% inspect
+```
+
+### Filters
+
+```{r}
+idx <- meta(news.cor, "conflict") == '237'
+meta(news.cor, "heading") == "conflict"
+news.cor[idx] %>% inspect
+```
+
+### Metadata Management
+Metadata is used to annotate text documents or whole corpora with additional information: use the `meta()` function.
+
+```{r}
+DublinCore(news.cor[[1]], "Creator") <- "Anonymous"
+meta(news.cor[[1]])
+```
+
+### Creating Term-Document Matrices
+Turns the corpus into a matrix that can be used by R.
+```{r}
+sMat <- DocumentTermMatrix(news.cor)
+sMat[1:4,1:6] %>% inspect %>% head
+```
+
+The matrix can the accessed in interesting ways. 
+```{r}
+#Frequencies
+findFreqTerms(sMat, 10) #Words that appear at least ten times. 
+
+#Correlations - the degree to which terms correlate with the specified term
+#i.e. appear in the same sentance
+findAssocs(sMat,"conflict", 0.6)
+findAssocs(sMat,c("group","rebels","negotiate"), c(0.7,0.7,1))
+
+#remove sparse terms, i.e., terms occurring only in very few documents
+removeSparseTerms(sMat, .01) %>% inspect
+```
+
+### Dictionaries
+From the package guide: A dictionary is a (multi-)set of strings. It is often used to denote relevant terms in text mining. We represent adictionary with a character vector which may be passed to the `DocumentTermMatrix()` constructor as a control argument. Then the created matrix is tabulated against the dictionary, i.e., only terms from the dictionary appear in the matrix. This allows to restrict the dimension of the matrix a priori and to focus on specific termsfor distinct text mining contexts, e.g.,
+
+```{r}
+inspect(DocumentTermMatrix(news.cor, list(dictionary = c("kerry", "rebels", "kiev"))))
+```
+
+-----
+
+### Reading in a PDF
+See [here]("http://onepager.togaware.com/TextMiningO.pdf") for a referrence. Note you need xpdf to make the `readPDF` engine work -- look [here]("http://www.foolabs.com/xpdf/download.html").
+
+See [this]("http://electricarchaeology.ca/2014/07/15/doing-ocr-within-r/") as well.
+```{r}
+
+path <- file.path(".pdf")
+path
+dir(path)
+doc <- Corpus(DirSource("test.pdf"), readerControl=list(reader=readPDF))
+doc
+
+
+```

@@ -104,8 +104,7 @@ pipeline <- list(sent_ann,
                  word_ann,
                  person_ann,
                  location_ann,
-                 organization_ann,
-                 date_ann)
+                 organization_ann)
 story_annotations <- annotate(story,pipeline)
 story_doc <- AnnotatedPlainTextDocument(story, story_annotations)
 ```
@@ -133,12 +132,12 @@ entities(story_doc,kind = "location") %>% unique
 
 entities(story_doc,kind = "organization") %>% unique
 
-entities(story_doc,kind = "date") %>% unique
+# entities(story_doc,kind = "date") %>% unique
 ```
 
 The extraction isn't perfect. There are a lot of things that the algorythem gets wrong. For example, the arabic names don't get picted up, the some of the organizations are places and titles. That said, this could be useful when scraping larger bodies of text. 
 
-Let's try loading another language library
+Here are different language libraries
 ```{r}
 #Spanish
 install.packages("openNLPmodels.es",
@@ -160,22 +159,8 @@ install.packages("openNLPmodels.pt",
 install.packages("openNLPmodels.nl",
                  repos = "http://datacube.wu.ac.at/",
                  type = "source")
-
-
-
-
-string <- as.String("Este es mi padre Pablo. This is my father Paul.")
-
-#Now the annotator
-sent_ann <- Maxent_Sent_Token_Annotator(language ="es")
-word_ann <- Maxent_Word_Token_Annotator()
-person_ann <- Maxent_Entity_Annotator(language ="en",kind = "person")
-pipe <- list(sent_ann,word_ann,person_ann)
-string_annotated <- annotate(string,pipe)
-string_doc <- AnnotatedPlainTextDocument(string,string_annotated)
-entities(string_doc)
 ```
-
+This may become useful down the line. 
 
 ### Using the The Stanford Natural Language Processing Group system
 
@@ -187,26 +172,30 @@ require(StanfordCoreNLP)
 
 ```{r}
 x <- paste("Stanford University is located in California.",
-           "It is a great university.")
+           "The people there suck.")
 x
 p <- StanfordCoreNLP_Pipeline(NULL)
 y <- p(x)
 y[1][[1]]
 
-p <- StanfordCoreNLP_Pipeline()y <- p(x)
+p <- StanfordCoreNLP_Pipeline() 
+y <- p(x)
 y
 #or with the NLP package
 annotate(x, p)
 
-p <- StanfordCoreNLP_Pipeline(annotators= "ner")
-y <- p(x)
-y
+#Taking this a step further
+z <- StanfordCoreNLP_Pipeline(annotators = "sentiment")
+an <- annotate(x, list(p,z)) 
+finish <- AnnotatedPlainTextDocument(x,an) 
+finish$annotations
+annotations(finish)[[1]]
 
-p <- StanfordCoreNLP_Pipeline("parse")
+
+p <- StanfordCoreNLP_Pipeline("ssplit")
 y <- p(x)
 y
 p(y)
 ```
-
-
+This still needs some work...but it is a good start. 
 
