@@ -84,21 +84,84 @@ write.csv(leader.data,paste0("Data/CIA_World_Leaders_Data_",format(Sys.Date(),"%
 
 ### Drawing from the Foreign Ministry sites.
 
-Mike directed me to a Foreign Ministry site of analytical interest. 
+Michael directed me to a Foreign Ministry site of analytical interest. 
 
 * [Iran]("http://en.mfa.ir/index.aspx?fkeyid=&siteid=3&pageid=1997")
-* [Russia]("http://www.mid.ru/brp_4.nsf/main_eng") - [Twitter]("https://twitter.com/governmentrf")
+* Russia
+    + [Russian President]("http://eng.kremlin.ru/by-keyword/82?page=1") -- Specifically the foreign policy part of the page.
+    + [Russian Foreign Minister]("http://www.mid.ru/brp_4.nsf/main_eng")
+    + [Twitter]("https://twitter.com/governmentrf")
 
-I will try to scrape one of these.
+Starting with Russia - first the president
 ```{r}
 require(rvest)
+require(stringr)
 require(lubridate)
-#Russia
-raw.data <- html("http://www.mid.ru/brp_4.nsf/main_eng")
-titles <- html_nodes(raw.data,"td+ td > a") %>% html_text
-date <- html_nodes(raw.data,"#toph1 td:nth-child(1) font") %>% html_text #%>% as.Date
-```
+require(tm)
+require(magrittr)
+#regular expression to easily retrive dates from noisy strings
+    regexp <- "([[:digit:]]+) ([[:alpha:]]+) ([[:digit:]]{4})"
 
+#Russian Presidents Foreign Policy Pate
+output.data <- NULL
+for(j in 1:130){ #No. of site pages == 130
+  url <- paste0("http://eng.kremlin.ru/by-keyword/82?page=",j)
+  raw.data <- html(url)
+  title.info <- html_nodes(raw.data,"h4 a") %>% html_text
+  briefs <- html_nodes(raw.data,".hentry-related") %>% html_node("div") %>% html_text(.,trim=T)
+        #The second node trims the list so that non-entries appear as NA
+  date <- html_nodes(raw.data,".entry-meta") %>% html_text() %>% str_extract(.,regexp) %>% dmy() 
+  story.link <- html_nodes(raw.data,"h4 a") %>% html_attr("href") %>% paste0("http://eng.kremlin.ru",.)
+  temp <- data.frame(title.info,date,briefs,story.link)
+  output.data <- rbind(output.data,temp)
+}
+#reformatting scraped data
+output.data$title.info <- as.character(output.data$title.info)
+output.data$briefs <- as.character(output.data$briefs)
+output.data$story.link <- as.character(output.data$story.link)
+
+#Pulling the specific storys and transforming them to a corpus file time for easy storage
+#of the actual content of the news brief.
+story.data <- html(output.data$story.link[1])
+story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim
+test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus
+#Assigning meta data
+test[[1]]$meta$date.published <- output.data$date[1]
+test[[1]]$meta$heading <- output.data$title.info[1]
+test[[1]]$meta$description <- output.data$briefs[1]
+test[[1]]$meta$origin <- output.data$story.link[1]
+test[[1]]$meta$author <- "President of Russia - Official Site"
+test[[1]]$meta$id <- paste0("ID_",1)
+
+#Now processing into a loop
+#Can only combine corpuses, need first iteration to be used as a base for the loop. 
+corpus <- test
+for(i in 2:nrow(output.data)){
+  #For some reason, you can only retrieve 64 articles at a time.
+  #Requires manual adjustment of the counter.
+  if(str_detect(output.data$story.link[i],"transcript")){
+    test <- VCorpus(VectorSource("NA due to Transcript"))
+    } else {
+      story.data <- html(output.data$story.link[i])
+      story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim
+      test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus
+      }
+   test[[1]]$meta$date.published <- output.data$date[i]
+   test[[1]]$meta$heading <- output.data$title.info[i]
+   test[[1]]$meta$description <- output.data$briefs[i]
+   test[[1]]$meta$origin <- output.data$story.link[i]
+   test[[1]]$meta$author <- "President of Russia - Official Site"
+   test[[1]]$meta$id <- paste0("ID_",i)
+   corpus <- c(corpus,test) 
+   test <- NULL
+   }
+#Examples
+corpus[[170]]$meta
+corpus[[2222]]$meta
+#all the meta data and contet is retrievable
+corpus[[2222]]$meta[4] 
+corpus[[170]]$content
+```
 
 
 

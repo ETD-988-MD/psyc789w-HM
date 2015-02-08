@@ -114,7 +114,8 @@ See [this]("http://electricarchaeology.ca/2014/07/15/doing-ocr-within-r/") as we
 path <- file.path(".pdf")
 path
 dir(path)
-doc <- Corpus(DirSource("test.pdf"), readerControl=list(reader=readPDF))
+dirty <- readLines("test.pdf")
+doc <- Corpus(DirSource(dirty), readerControl=list(reader=readPlain))
 doc
 
 
