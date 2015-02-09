@@ -45,38 +45,30 @@ for(j in 1:length(camp)){
           }
       } else { if(is.na(temp$camp_orgs[i])){
         temp$count[i] <- temp$count[i-1] + 0
-        } else {
+        } else { 
           temp$count[i] <- temp$count[i-1] + temp$camp_orgs[i]
           }
-        } 
+        }
     }
   output <- rbind(output,temp)
   temp$count <- NA
   }
-
 #See if everying worked
 output %>% select(year:target,camp_orgs,count) %>% View
+summary(output$count) #too large
 ```
 
 For now, the variable looks right (there are a few underlying theoretical issues that I will have to consider).
 
-Let's run the preliminary analysis:
+Let's run some preliminary analysis:
 ```{r}
+require(descr)
+crosstab(output$pi_socwel,output$count)
 #LPM
 lm(output$pi_socwel~output$count) %>% summary
 #probit
 glm(output$pi_socwel~output$count,family = binomial("probit")) %>% summary
+#more sophistocated model
+glm(pi_socwel~count+camp_structure+camp_support+camp_size+repression,data=output,family = binomial("probit")) %>% summary
 ```
 Nothing...
-
-
-
-
-
-
-
-
-
-
-
-
