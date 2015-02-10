@@ -56,6 +56,10 @@ for(j in 1:length(camp)){
 #See if everying worked
 output %>% select(year:target,camp_orgs,count) %>% View
 summary(output$count) #too large
+hist(output$count,breaks = 20,col="grey") #right skew
+#transformation
+hist(log(output$count),breaks = 20,col="lightblue")
+hist(sqrt(output$count),breaks = 20,col="lightblue")
 ```
 
 For now, the variable looks right (there are a few underlying theoretical issues that I will have to consider).
@@ -70,5 +74,10 @@ lm(output$pi_socwel~output$count) %>% summary
 glm(output$pi_socwel~output$count,family = binomial("probit")) %>% summary
 #more sophistocated model
 glm(pi_socwel~count+camp_structure+camp_support+camp_size+repression,data=output,family = binomial("probit")) %>% summary
+
+#Model with the transformed var
+lm(output$pi_socwel~log(output$count)) %>% summary
+glm(output$pi_socwel~log(output$count),family = binomial("probit")) %>% summary
+glm(pi_socwel~log(count)+camp_structure+camp_support+camp_size+repression,data=output,family = binomial("probit")) %>% summary
 ```
 Nothing...
