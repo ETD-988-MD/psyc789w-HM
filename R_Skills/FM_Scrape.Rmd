@@ -99,7 +99,7 @@ require(stringr)
 require(lubridate)
 require(tm)
 require(magrittr)
-#regular expression to easily retrive dates from noisy strings
+#regular expression to easily retrieve dates from noisy strings
     regexp <- "([[:digit:]]+) ([[:alpha:]]+) ([[:digit:]]{4})"
 
 #Russian Presidents Foreign Policy Pate
@@ -136,9 +136,9 @@ test[[1]]$meta$id <- paste0("ID_",1)
 #Now processing into a loop
 #Can only combine corpuses, need first iteration to be used as a base for the loop. 
 corpus <- test
-for(i in 2:nrow(output.data)){
-  #For some reason, you can only retrieve 64 articles at a time.
-  #Requires manual adjustment of the counter.
+for(i in 206:nrow(output.data)){
+  #For some reason, you can only retrieve ~64 articles at a time.
+  #Implying a time-out limit
   if(str_detect(output.data$story.link[i],"transcript")){
     test <- VCorpus(VectorSource("NA due to Transcript"))
     } else {
@@ -165,6 +165,12 @@ corpus[[170]]$content
 
 
 
+
+```{r}
+#Temporary Save of current data frame
+write.csv(output.data,"Data/Rus.Pres.Meeting.Data.2.7.csv") #Just in Case.
+#Currently having time out issues with the Russian server. 
+```
 
 
 
@@ -206,8 +212,3 @@ head(pictures)
 
 ### Scraping with Python
 First, [this]("http://docs.python-guide.org/en/latest/scenarios/scrape/") and [this]("http://learnpythonthehardway.org/book/ex5.html") for starters. 
-
-### Text Mining
-See [this]("http://cran.r-project.org/web/packages/tm/tm.pdf")
-
-

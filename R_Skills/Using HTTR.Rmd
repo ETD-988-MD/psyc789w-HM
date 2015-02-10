@@ -15,7 +15,22 @@ require(stringi)
 
 ```{r}
 #GET() gets urls
-google <- GET("http://google.com")
+r <- GET("http://httpbin.org/get")
+content(r, "text") # Content accesses the content of the message. 
+content(r, "text", encoding = "ISO-8859-1") #When you can't trust the encoding.
+content(r,"raw") #The raw sequence vector that the request sent back
+str(content(r,"parsed")) #httr has a number a ways to get at the info
+headers(r)
+
+#cookies
+r <- GET("http://httpbin.org/cookies", set_cookies("MeWant" = "cookies"))
+content(r)$cookies
+
+news <- GET("http://www.bbc.com/news/")
+content(news,"parsed")
+headers(news)
+html(news) %>% html_nodes(.,"a")
+
 #the function can get a whole range of things
 httr.cran <- content(GET("http://cran.r-project.org/web/packages/httr/httr.pdf")) #Extracted a PDF into a raw data format
 
