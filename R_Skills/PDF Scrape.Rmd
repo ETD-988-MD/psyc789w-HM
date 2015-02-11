@@ -1,0 +1,41 @@
+---
+title: "PDF Scrape"
+output: html_document
+---
+
+This is the walk through for a PDF scrape. I'm pulling direction from [here]("http://electricarchaeology.ca/2014/07/15/doing-ocr-within-r/")
+
+First, a few set up things:
+
+1. Make sure you have Xpdf downloaded and installed (available [here]("ftp://ftp.foolabs.com/pub/xpdf/xpdfbin-win-3.04.zip"). Make a note of where you unzipped it. In particular, you are looking for the location of the file ‘pdftotext.exe’. Also, make sure you know where ‘pdftoppm’ is located too (it’s in that download). ... i.e. save the "read me" file that comes with the download
+2. Download and install [Tesseract](https://code.google.com/p/tesseract-ocr/). But first you'll need the [macport installer](https://www.macports.org/install.php) after that you only need to enter `sudo port install tesseract` into the commandline of the terminal. This will take some time since there is a lot there to download. 
+3. Download and install [Imagemagick](http://www.imagemagick.org/) -- [here]("http://www.imagemagick.org/script/binary-releases.php#macosx") is a step-by-step link.
+
+Running the code - again see BW [script]("https://gist.github.com/benmarwick/11333467")
+```{r}
+#location of the PDFs - keeping it small to test the code
+dest <- "PDF_TEST"
+#making a vector of PDF names
+# make a vector of PDF file names
+myfiles <- list.files(path = dest, pattern = "pdf",  full.names = TRUE)
+myfiles
+
+lapply(myfiles, function(i){
+  # convert pdf to ppm (an image format), just pages 1-10 of the PDF
+  # but you can change that easily, just remove or edit the 
+  # -f 1 -l 10 bit in the line below
+  system(shQuote(paste0("pdftoppm ", i, " -f 1 -l 10 -r 600 ocrbook")))
+  # convert ppm to tif ready for tesseract
+  system(shQuote(paste0("convert *.ppm ", i, ".tif")))
+  # convert tif to text file
+  system(shQuote(paste0("tesseract ", i, ".tif ", i, " -l eng")))
+  # delete tif file
+  file.remove(paste0(i, ".tif" ))
+  })
+ 
+```
+
+
+
+
+
