@@ -14,11 +14,13 @@ First, a few set up things:
 Running the code - again see BW [script]("https://gist.github.com/benmarwick/11333467")
 ```{r}
 #location of the PDFs - keeping it small to test the code
-dest <- "PDF_TEST"
+dest <- "/Users/Ericdunford/Desktop/psyc789w-HM/PDF_TEST/"
 #making a vector of PDF names
 # make a vector of PDF file names
 myfiles <- list.files(path = dest, pattern = "pdf",  full.names = TRUE)
 myfiles
+
+lapply(myfiles, function(i){system(paste('"/usr/local/bin/pdftotext"', paste0('"', i, '"')), wait = FALSE)} )
 
 lapply(myfiles, function(i){
   # convert pdf to ppm (an image format), just pages 1-10 of the PDF

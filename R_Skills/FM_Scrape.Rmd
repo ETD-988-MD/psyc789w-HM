@@ -136,13 +136,17 @@ test[[1]]$meta$id <- paste0("ID_",1)
 #Now processing into a loop
 #Can only combine corpuses, need first iteration to be used as a base for the loop. 
 corpus <- test
-for(i in 206:nrow(output.data)){
+for(i in 2:nrow(output.data)){
   #For some reason, you can only retrieve ~64 articles at a time.
   #Implying a time-out limit
-  if(str_detect(output.data$story.link[i],"transcript")){
+  if(str_detect(output.data$story.link[i],"transcript") | str_detect(output.data$story.link[i],"http://eng.kremlin.ruhttp://eng.state.kremlin.ru")){
     test <- VCorpus(VectorSource("NA due to Transcript"))
     } else {
-      story.data <- html(output.data$story.link[i])
+      #Here is a way around the timeout
+      #rather simulate a browser so the RU server doesn't recognize the bot
+      #This method is slower but works.
+      #story.data <- html(output.data$story.link[i]) #Timeout after 64
+      story.data <- html_session(output.data$story.link[i]) # No timeout
       story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim
       test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus
       }
@@ -165,12 +169,14 @@ corpus[[170]]$content
 
 
 
-
 ```{r}
 #Temporary Save of current data frame
-write.csv(output.data,"Data/Rus.Pres.Meeting.Data.2.7.csv") #Just in Case.
-#Currently having time out issues with the Russian server. 
+write.csv(output.data,"Data/Rus.Pres.Meeting.Data.2.7.csv") #As .csv
+
+#Saving working objects 
 ```
+
+
 
 
 
