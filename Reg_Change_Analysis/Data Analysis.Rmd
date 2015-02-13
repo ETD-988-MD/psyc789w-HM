@@ -62,8 +62,8 @@ For now, the variable looks right (there are a few underlying theoretical issues
 
 Let's run some preliminary analysis:
 ```{r}
-require(descr)
-crosstab(output$pi_socwel,output$count)
+#require(descr)
+#crosstab(output$pi_socwel,output$count)
 #LPM
 lm(output$pi_socwel~output$count) %>% summary
 #probit
@@ -72,3 +72,20 @@ glm(output$pi_socwel~output$count,family = binomial("probit")) %>% summary
 glm(pi_socwel~count+camp_structure+camp_support+camp_size+repression,data=output,family = binomial("probit")) %>% summary
 ```
 Nothing...
+
+Here it's not just the # of groups that matters but the type of transition being pushed for (greater democratic rights). Also, victory has to be near (or perceptably plausible)...thus the movement has to exhibit a lagged success.
+```{r}
+#Lagged output variable
+output$progress_lagged <- lag(output$progress)
+#Regime type variable
+polity <- read.csv("Data/polity_p4v2013.csv")
+polity <- select(polity,c(country,year,polity2))
+require(countrycode)
+polity$cowc <- countrycode(polity$country,"country.name","cowc")
+output$cowc <- countrycode(output$location,"country.name","cowc")
+merge <- merge(output,polity,by=c("cowc","year"))
+merge$dem <- ifelse(merge$polity2>=6,1,0)
+lm(pi_socwel~count+lag(count)+lag(progress,1)+lag(progress,2)+progress+dem,data=merge) %>% summary
+lm(pi_socwel~count+lag(count)+lag(progress,1)+progress+lag(progress,1)*lag(count)+dem,data=merge) %>% summary
+```
+
