@@ -120,6 +120,16 @@ output.data$title.info <- as.character(output.data$title.info)
 output.data$briefs <- as.character(output.data$briefs)
 output.data$story.link <- as.character(output.data$story.link)
 
+#resolving minor issues with the recorded links
+for(i in 1:nrow(output.data)){
+  if(str_detect(output.data$story.link[i],"http://eng.state.kremlin.ru")){
+    output.data$story.link[i] <- gsub("http://eng.kremlin.ruhttp://eng.state.kremlin.ru","http://eng.state.kremlin.ru",output.data$story.link[i])
+  }
+}
+
+#Save Data as .CSV
+write.csv(output.data,paste0("Data/Rus.Pres.Meeting.Data.v.",format(Sys.Date(),"%m.%d.%y"),".csv")) 
+
 #Pulling the specific storys and transforming them to a corpus file time for easy storage
 #of the actual content of the news brief.
 story.data <- html(output.data$story.link[1])
@@ -137,15 +147,13 @@ test[[1]]$meta$id <- paste0("ID_",1)
 #Can only combine corpuses, need first iteration to be used as a base for the loop. 
 corpus <- test
 for(i in 2:nrow(output.data)){
-  #For some reason, you can only retrieve 64 articles at a time.
-  #Requires manual adjustment of the counter.
-  if(str_detect(output.data$story.link[i],"transcript")){
-    test <- VCorpus(VectorSource("NA due to Transcript"))
-    } else {
-      story.data <- html(output.data$story.link[i])
+  #For some reason, you can only retrieve ~64 articles at a time.
+      #Method 1: we get a timeout
+        #story.data <- html(output.data$story.link[i])
+      #Method 2: we simulate the browser so that there is no timeout
+      story.data <- html_session(output.data$story.link[i])
       story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim
       test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus
-      }
    test[[1]]$meta$date.published <- output.data$date[i]
    test[[1]]$meta$heading <- output.data$title.info[i]
    test[[1]]$meta$description <- output.data$briefs[i]
@@ -163,15 +171,6 @@ corpus[[2222]]$meta[4]
 corpus[[170]]$content
 ```
 
-<<<<<<< HEAD
-=======
-Save data for use down the line.
-```{r}
-#Temporary Save of current data frame
-write.csv(output.data,"Data/Rus.Pres.Meeting.Data.2.7.csv") #As .csv
-
-#Saving working objects 
-```
 
 ### Processing the data 
 Here we need to synthesize the raw scape materials into a working (and statistically utilizable) dataframe. There are two ways to proceed w/r/t processing the raw corpus into the type of dyadic data frame that we need to run the network analysis: The NLP approach or the dictionary approach (which involves creating a dictionary of leader names and position in order extract the names and populated it with the leaders relative status).
@@ -383,8 +382,6 @@ temp.data <- data.frame(sideA.actortitle=title,sideA.actor=sideA.actor,sideA.cou
 
 ```
 
-
->>>>>>> FETCH_HEAD
 
 
 
