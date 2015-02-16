@@ -146,7 +146,7 @@ test[[1]]$meta$id <- paste0("ID_",1)
 #Now processing into a loop
 #Can only combine corpuses, need first iteration to be used as a base for the loop. 
 corpus <- test
-for(i in 2:nrow(output.data)){
+for(i in 261:nrow(output.data)){
   #For some reason, you can only retrieve ~64 articles at a time.
       #Method 1: we get a timeout
         #story.data <- html(output.data$story.link[i])
@@ -171,7 +171,7 @@ corpus[[2222]]$meta[4]
 corpus[[170]]$content
 
 ##Save Corpus Object
-save(corpus,file=paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus)))
+save(corpus,file=paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus),".Rdata"))
 ```
 
 
