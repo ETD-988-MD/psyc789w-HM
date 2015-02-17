@@ -1,0 +1,175 @@
+setwd("/Users/edunford/Desktop/psyc789w-HM/")
+getwd
+getwd()
+output.data <- read.csv("Data/Rus.Pres.Meeting.Data.v.02.16.15.csv")
+class(output.data$story.link)
+output.data$title.info <- as.character(output.data$title.info)
+output.data$briefs <- as.character(output.data$briefs)
+output.data$story.link <- as.character(output.data$story.link)
+for(i in 1:nrow(output.data)){#
+  if(str_detect(output.data$story.link[i],"http://eng.state.kremlin.ru")){#
+    output.data$story.link[i] <- gsub("http://eng.kremlin.ruhttp://eng.state.kremlin.ru","http://eng.state.kremlin.ru",output.data$story.link[i])#
+  }#
+}
+require(rvest)#
+require(stringr)#
+require(lubridate)#
+require(tm)#
+require(magrittr)
+for(i in 1:nrow(output.data)){#
+  if(str_detect(output.data$story.link[i],"http://eng.state.kremlin.ru")){#
+    output.data$story.link[i] <- gsub("http://eng.kremlin.ruhttp://eng.state.kremlin.ru","http://eng.state.kremlin.ru",output.data$story.link[i])#
+  }#
+}
+story.data <- html(output.data$story.link[1])
+story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim
+test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus
+test[[1]]$meta$date.published <- output.data$date[1]
+test[[1]]$meta$heading <- output.data$title.info[1]
+test[[1]]$meta$description <- output.data$briefs[1]
+test[[1]]$meta$origin <- output.data$story.link[1]
+test[[1]]$meta$author <- "President of Russia - Official Site"
+test[[1]]$meta$id <- paste0("ID_",1)
+corpus <- test
+corpus
+for(i in 2:nrow(output.data)){#
+  #For some reason, you can only retrieve ~64 articles at a time.#
+      #Method 1: we get a timeout#
+        #story.data <- html(output.data$story.link[i])#
+      #Method 2: we simulate the browser so that there is no timeout#
+      story.data <- html_session(output.data$story.link[i])#
+      story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim#
+      test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus#
+   test[[1]]$meta$date.published <- output.data$date[i]#
+   test[[1]]$meta$heading <- output.data$title.info[i]#
+   test[[1]]$meta$description <- output.data$briefs[i]#
+   test[[1]]$meta$origin <- output.data$story.link[i]#
+   test[[1]]$meta$author <- "President of Russia - Official Site"#
+   test[[1]]$meta$id <- paste0("ID_",i)#
+   corpus <- c(corpus,test) #
+   test <- NULL#
+   }
+corpus
+corpus[[19]]$meta
+story.data <- html(output.data$story.link[1])#
+story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim#
+test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus#
+#Assigning meta data#
+test[[1]]$meta$date.published <- output.data$date[1]#
+test[[1]]$meta$heading <- output.data$title.info[1]#
+test[[1]]$meta$description <- output.data$briefs[1]#
+test[[1]]$meta$origin <- output.data$story.link[1]#
+test[[1]]$meta$author <- "President of Russia - Official Site"#
+test[[1]]$meta$id <- paste0("ID_",1)
+corpus <- test
+for(i in 2:nrow(output.data)){#
+  #For some reason, you can only retrieve ~64 articles at a time.#
+      #Method 1: we get a timeout#
+        #story.data <- html(output.data$story.link[i])#
+      #Method 2: we simulate the browser so that there is no timeout#
+      story.data <- html_session(output.data$story.link[i])#
+      story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim#
+      test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus#
+   test[[1]]$meta$date.published <- output.data$date[i]#
+   test[[1]]$meta$heading <- output.data$title.info[i]#
+   test[[1]]$meta$description <- output.data$briefs[i]#
+   test[[1]]$meta$origin <- output.data$story.link[i]#
+   test[[1]]$meta$author <- "President of Russia - Official Site"#
+   test[[1]]$meta$id <- paste0("ID_",i)#
+   corpus <- c(corpus,test) #
+   test <- NULL#
+   }
+corpus
+sys.Date()
+sys.date()
+Sys.Date()
+length(corpus)
+save(corpus,paste0("RU_Pres_corpus_",format(Sys.Date(),%d.%m.%y),"_total.no:",length(corpus)))
+paste0("RU_Pres_corpus_",format(Sys.Date(),%d.%m.%y),"_total.no:",length(corpus))
+paste0("RU_Pres_corpus_",format(Sys.Date(),"%d.%m.%y"),"_total.no:",length(corpus))
+save(corpus,paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus)))
+save(corpus,paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus)))
+?save
+save(corpus,file=paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus)))
+save(corpus,file=paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus),".Rdata"))
+i
+story.data <- html_session(output.data$story.link[i])
+story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim
+test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus
+test[[1]]$meta$date.published <- output.data$date[i]
+test[[1]]$meta$heading <- output.data$title.info[i]
+test[[1]]$meta$description <- output.data$briefs[i]
+test[[1]]$meta$origin <- output.data$story.link[i]
+test[[1]]$meta$author <- "President of Russia - Official Site"
+test[[1]]$meta$id <- paste0("ID_",i)
+corpus <- c(corpus,test)
+test <- NULL
+corpus
+for(i in 261:nrow(output.data)){#
+  #For some reason, you can only retrieve ~64 articles at a time.#
+      #Method 1: we get a timeout#
+        #story.data <- html(output.data$story.link[i])#
+      #Method 2: we simulate the browser so that there is no timeout#
+      story.data <- html_session(output.data$story.link[i])#
+      story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim#
+      test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus#
+   test[[1]]$meta$date.published <- output.data$date[i]#
+   test[[1]]$meta$heading <- output.data$title.info[i]#
+   test[[1]]$meta$description <- output.data$briefs[i]#
+   test[[1]]$meta$origin <- output.data$story.link[i]#
+   test[[1]]$meta$author <- "President of Russia - Official Site"#
+   test[[1]]$meta$id <- paste0("ID_",i)#
+   corpus <- c(corpus,test) #
+   test <- NULL#
+   }
+corpus
+save(corpus,file=paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus),".Rdata"))
+i
+corpus[[170]]$meta
+corpus[[170]]$content
+for(i in 1306:nrow(output.data)){#
+  #For some reason, you can only retrieve ~64 articles at a time.#
+      #Method 1: we get a timeout#
+        #story.data <- html(output.data$story.link[i])#
+      #Method 2: we simulate the browser so that there is no timeout#
+      story.data <- html_session(output.data$story.link[i])#
+      story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim#
+      test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus#
+   test[[1]]$meta$date.published <- output.data$date[i]#
+   test[[1]]$meta$heading <- output.data$title.info[i]#
+   test[[1]]$meta$description <- output.data$briefs[i]#
+   test[[1]]$meta$origin <- output.data$story.link[i]#
+   test[[1]]$meta$author <- "President of Russia - Official Site"#
+   test[[1]]$meta$id <- paste0("ID_",i)#
+   corpus <- c(corpus,test) #
+   test <- NULL#
+   }
+corpus
+save(corpus,file=paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus),".Rdata"))
+i
+for(i in 2231:nrow(output.data)){#
+  #For some reason, you can only retrieve ~64 articles at a time.#
+      #Method 1: we get a timeout#
+        #story.data <- html(output.data$story.link[i])#
+      #Method 2: we simulate the browser so that there is no timeout#
+      story.data <- html_session(output.data$story.link[i])#
+      story.body <- html_nodes(story.data,"#selectable-content > p") %>% html_text %>% str_trim#
+      test <- as.String(story.body) %>% VectorSource(.) %>% VCorpus#
+   test[[1]]$meta$date.published <- output.data$date[i]#
+   test[[1]]$meta$heading <- output.data$title.info[i]#
+   test[[1]]$meta$description <- output.data$briefs[i]#
+   test[[1]]$meta$origin <- output.data$story.link[i]#
+   test[[1]]$meta$author <- "President of Russia - Official Site"#
+   test[[1]]$meta$id <- paste0("ID_",i)#
+   corpus <- c(corpus,test) #
+   test <- NULL#
+   }
+corpus
+save(corpus,file=paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus),".Rdata"))
+corpus[[2222]]$meta
+corpus[[2222]]$meta[4]
+corpus[[2222]]$content
+corpus[[2600]]$meta
+corpus[[2600]]$content
+paste0("ID_",i,_format(Sys.Date(),"%m.%d.%y"))
+paste0("ID_",i,"_",format(Sys.Date(),"%m.%d.%y"))
