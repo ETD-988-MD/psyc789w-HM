@@ -169,11 +169,14 @@ corpus[[2222]]$meta
 #all the meta data and contet is retrievable
 corpus[[2222]]$meta[4] 
 corpus[[170]]$content
+corpus[[2222]]$content
 
 ##Save Corpus Object
-save(corpus,file=paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus)))
+save(corpus,file=paste0("RU_Pres_corpus_",format(Sys.Date(),"%m.%d.%y"),"_total.no:",length(corpus),".Rdata"))
 ```
+The build was incremental; thus multiple corpus objects were saves as the full extraction was gradually processed. The way the save file was formated allows for the user to know (a) the date the extraction occurred, and (b) the number of corpuses contained within the extraction. This allows for the user to know which corpus version he/she is using, and will allow for less processing error as corpuses are updated to add new material. 
 
+Here I need to include a brief note about the ordering of the corpuses. Right now, the order is current moment (1) to the furthest moment in the past that I was able to retrieve (2600). Any update will stack the newly retrieved corpuses on to the past ones (e.g. 2601,2602, etc.). Thus, if it is possible to reorder the corpus object chronologically, then that would be best. 
 
 ### Processing the data 
 Here we need to synthesize the raw scape materials into a working (and statistically utilizable) dataframe. There are two ways to proceed w/r/t processing the raw corpus into the type of dyadic data frame that we need to run the network analysis: The NLP approach or the dictionary approach (which involves creating a dictionary of leader names and position in order extract the names and populated it with the leaders relative status).
