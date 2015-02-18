@@ -36,8 +36,8 @@ require(openNLPmodels.en) #English dictionary
 corpus[[170]]$meta
 
 #Using languae processing to extract key information from corpus text
-story <- as.String(corpus[[1]]$content) #body text
-brief <- as.String(corpus[[1]]$meta[2]) # brief
+story <- as.String(corpus[[2]]$content) #body text
+brief <- as.String(corpus[[2]]$meta[[3]]) # brief
 
 #annotators
 word_ann <- Maxent_Word_Token_Annotator()
@@ -106,11 +106,11 @@ leader.data$office.holder <- tolower(leader.data$office.holder)
 #extraction will occur along two paths: the brief and the story content.
 #here I will do the briefs since it is more straight forward however 
 #the code can be easily manipulated to utilize the larger content of the story
-  descr <- corpus[[1]]$meta[3] %>% as.character #brief
+  descr <- corpus[[3]]$meta[[3]] %>% as.character #brief
   descr <- tolower(descr)
 #extracting corpus content; to character
-  #content <- tm_map(corpus, content_transformer(tolower)) %>%  .[1] %>% inspect
-  #content <- s[[1]]$content %>% as.character #actual content of the story
+  content <- tm_map(corpus, content_transformer(tolower)) %>%  .[1] %>% inspect
+  content <- s[[1]]$content %>% as.character #actual content of the story
 
 #placeholder object
 s <- descr
@@ -230,6 +230,29 @@ for(i in 1:nrow(identified.leaders2)){
 
 #Data frame for this iteration
 temp.data <- data.frame(sideA.actortitle=title,sideA.actor=sideA.actor,sideA.country=sideA.country)
+
+```
+
+### Text Correlations
+```{r}
+require(tm)
+require(stringr)
+#Material to test
+corpus[[2]]$content
+corpus[[2]]$meta[[3]] #This is a good test for names
+brief <- corpus[[2]]$meta[[3]]
+
+#Again, uploading the leader data
+leader.data <- read.csv('Data/CIA_World_Leaders_Data_01.28.15.csv')
+
+#Subset of just Russian Leaders
+rus.leaders <- leader.data %>% filter(country=="Russia")
+rus.leaders$office.holder <- as.character(rus.leaders$office.holder) %>% str_trim() %>% tolower()
+
+side.A <- DocumentTermMatrix(as.String(brief) %>% VectorSource(.) %>% VCorpus,list(dictionary=rus.leaders$last.name))
+for(i in 1:nrow(rus.leaders)){if(findFreqTerms(side.A, lowfreq=1)==rus.leaders$last.name[i]){test <- rus.leaders$office.holder[i]}}
+test #Successful Extraction
+
 
 ```
 
