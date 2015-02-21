@@ -42,7 +42,7 @@ brief <- as.String(corpus[[2]]$meta[[3]]) # brief
 #annotators
 word_ann <- Maxent_Word_Token_Annotator()
 sent_ann <- Maxent_Sent_Token_Annotator()
-person_ann <- Maxent_Entity_Annotator(kind = "person")
+person_ann <- Maxent_Entity_Annotator(kind = "person",model="nl-ner-person.bin")
 location_ann <- Maxent_Entity_Annotator(kind = "location")
 organization_ann <- Maxent_Entity_Annotator(kind = "organization")
 
@@ -73,6 +73,8 @@ entities <- function(doc, kind) {
     s[a[a$type == "entity"]]
   }
 }
+
+
 #We can in theory extract the relavent names.
 #from story
   entities(story_doc,kind = "person") %>% unique #failed
@@ -101,19 +103,20 @@ leader.data$office.holder <- tolower(leader.data$office.holder)
   rus.leaders$office.holder <- str_trim(rus.leaders$office.holder)
 #Subet of all non-target country leaders
   other.leaders <- leader.data %>% filter(!country=="Russia")
-  other.leaders$office.holder <- str_trim(other.leaders$office.holder)
+  other.leaders$office.holder <- str_trim(other.leaders$office.holder) %>% tolower
 
 #extraction will occur along two paths: the brief and the story content.
 #here I will do the briefs since it is more straight forward however 
 #the code can be easily manipulated to utilize the larger content of the story
   descr <- corpus[[3]]$meta[[3]] %>% as.character #brief
-  descr <- tolower(descr)
+  descr <- tolower(descr) 
+  descr <- descr %>%  strsplit(.," ") %>% .[[1]]
 #extracting corpus content; to character
   content <- tm_map(corpus, content_transformer(tolower)) %>%  .[1] %>% inspect
-  content <- s[[1]]$content %>% as.character #actual content of the story
+  content <- content[[1]]$content %>% as.character #actual content of the story
 
 #placeholder object
-s <- descr
+s <- descr 
 
 #Breakup names
   #Target country
@@ -199,8 +202,23 @@ for(i in 1:nrow(identified.leaders)){
   sideA.actor.title[i] <- as.character(identified.leaders$office[i])
   }
 
-#isolate sideB actors #LEFT OFF HERE!!!
+#isolate sideB actors #LEFT OFF HERE!!! 2.18.14
 identified.leaders2 <- NULL
+
+countrys <- other.leaders$country %>% as.character %>% unique 
+for(k in 1:length(countrys)){
+  temp <- other.leaders %>% filter(country==countrys[k])
+  for(j in 1:nrow(temp)){
+    if(!is.na(str_detect(s,temp$last.name[j])) & str_detect(s,temp$last.name[j])){
+      tagged.leaders <- filter(other.leaders,other.leaders$office.holder==as.character(temp$office.holder[j]))} else{next}
+    identified.leaders2 <- rbind(identified.leaders2,tagged.leaders)
+    }
+  tagged.leaders <- NULL
+  }
+identified.leaders2
+
+
+
 for(j in 1:nrow(other.leaders)){
   
   if(str_detect(s,as.character(other.leaders$country[j]))){
@@ -253,6 +271,47 @@ side.A <- DocumentTermMatrix(as.String(brief) %>% VectorSource(.) %>% VCorpus,li
 for(i in 1:nrow(rus.leaders)){if(findFreqTerms(side.A, lowfreq=1)==rus.leaders$last.name[i]){test <- rus.leaders$office.holder[i]}}
 test #Successful Extraction
 
+#Let's try the other side. Here we need to subset by country
 
+#Works if specify just FR
+y <- other.leaders %>% filter(country=="France")
+side.B <- DocumentTermMatrix(as.String(tolower(brief)) %>% VectorSource(.) %>% VCorpus,list(dictionary=y$last.name))
+for(i in 1:nrow(y)){
+  if(!is.na(y$last.name[i]) & findFreqTerms(side.B, lowfreq=1)==tolower(y$last.name[i])){
+    test1 <- y$office.holder[i]}}
+test1#Successful Extraction
+
+#country detector
+country <- other.leaders$country %>% unique %>% as.character %>% tolower()
+c.identified <- DocumentTermMatrix(as.String(tolower(brief)) %>% VectorSource(.) %>% VCorpus,list(dictionary=country))
+findFreqTerms(c.identified, lowfreq=1)
+
+
+p <- other.leaders %>% filter(country=="Germany")
+side.B <- DocumentTermMatrix(as.String(tolower(brief)) %>% VectorSource(.) %>% VCorpus,list(dictionary=p$last.name))
+for(i in 1:nrow(p)){
+  if(!is.na(p$last.name[i]) & findFreqTerms(side.B, lowfreq=1)==tolower(p$last.name[i])){
+    test1 <- p$office.holder[i]}}
+test1#Successful Extraction
+
+
+
+side.A <- DocumentTermMatrix(as.String(brief) %>% VectorSource(.) %>% VCorpus,list(dictionary=str_split(rus.leaders$office.holder," ")))
+for(i in 1:nrow(rus.leaders)){if(findFreqTerms(side.A, lowfreq=1)==rus.leaders$last.name[i]){test <- rus.leaders$office.holder[i]}}
+test #Successful Extraction
+
+DocumentTermMatrix(
+
+
+findAssocs(DocumentTermMatrix(as.String(brief) %>% VectorSource(.) %>% VCorpus),scan_tokenizer(rus.leaders$last.name),.5)
 ```
+
+
+
+
+
+
+
+
+
 

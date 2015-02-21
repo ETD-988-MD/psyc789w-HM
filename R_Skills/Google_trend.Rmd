@@ -1,0 +1,135 @@
+---
+title: "Google Trends"
+date: February 20, 2015
+output: html_document
+---
+This is the R workshop held by E Calvo re Googletrend processing. 
+
+```{r}
+#Loading relevant packages
+library(devtools)
+devtools::install_github("google/CausalImpact")
+devtools::install_github("dvanclev/GTrendsR")
+devtools::install_github("trinker/gtrend")
+require(rvest);library(gtrend); library(dplyr); library(ggplot2); library(scales); library(foreign)
+```
+
+E. started with a general primer on how R operates and functions. Though there were a few valuable points.
+   
+    * `~` can be thought of as "distributed as" y ~ x == y w/ a distribution of x
+
+Here we have a specific dropbox path that E. is using. 
+```{r}
+#This leads to E.'s code.
+url <- "https://www.dropbox.com/s/6fl7zvmt2cd0o3x/google%20trend%20code.txt?dl=0"
+```
+
+Here is Ernesto's code laid out. Google trends is rich for something specific...you have to have a purpose for why this type of information would be useful. Some useful examples of this would be using looking at certain trends (such as looking at "flu trends"); however, it is clear that this information is not stochastic. All in all, this information is _interesting_ but not definitive. 
+
+In Google trends, the data is normalized relative
+
+```{r}
+#################
+#### GTRENDS ####
+#################
+
+# Code to analyze the effect of Campaign on Individual Searches.
+
+terms <- c("Mitch McConnell", "Harry Reid", "Hillary Clinton", "Barak Obama","Jeb Bush", "John Boehner", "Nancy Pelosi", "Chris Christie", "Lindsey Graham", "Rick Perry","Ted Cruz", "Mike Huckabee","Scott Walker", "Andrew Cuomo","Obama muslim", "intelligent design", "romney dog", "one percenter", "inequality", "anchor baby", "liberal media")
+
+#Here you have to specify your Gmail credentials and your geo-locations
+out <- gtrend_scraper("dunforde@gmail.com", "Feldwod.1", terms, geo = "US")
+
+
+## Traditional approach
+plot(trend2long(out[1]))+theme_bw()
+plot(trend2long(out[2]))+theme_bw()
+plot(trend2long(out[1:2]))+theme_bw()
+#Or all the shit together
+plot(trend2long(out))+theme_bw()
+
+#You can get inside of this object and then you can explore what is going on in each city
+out[[1]]$cities #These are the cities that are looking for MM
+out[[1]]$cities[[1]][1]
+out[[1]]$cities[[1]][2]
+```
+
+Here Ernesto uses the `pipe`....fool doesn't like the pipe...which is foolish.
+```{r}
+## You can use the `pipe`
+out %>% trend2long() %>% plot() 
+
+out %>%
+    trend2long() %>%
+    ggplot(aes(x=start, y=log(trend+1), color=term)) +
+        geom_line() +
+        facet_wrap(~term,ncol = 3) +
+        guides(color=FALSE)+theme_bw()
+
+trend2long(out) %>%
+    ggplot(aes(x=start, y=term, fill=trend)) +
+    geom_tile() +
+    scale_fill_gradient(low="black", high="white") +
+    scale_x_date(expand = c(0, 0)) +
+    theme_bw() + xlab("time")
+```
+
+#### Some Analysis
+Here we are running some analysis and then processing the "causality" (or the realtionship between states and cities)
+
+```{r}
+## States that search alike are alike?
+  base<-data.frame(out[[1]]$regions[[1]])
+  #base<-temp[order(temp$Subregion),]
+  for(i in 2:21){
+  temp<-data.frame(out[[i]]$regions[[1]])
+  #temp<-cbase,temp[order(temp$Subregion),]
+  base<- merge(base,temp)
+  }
+  ideal.s<-prcomp((t((base[,2:22]+1))))
+  plot(ideal.s$rotation[,1:2])
+  state<-data.frame(base[,1],ideal.s$rotation[,1:2])
+  state<-state[order(state[,2]),]
+
+
+## Cities that search alike are alike?
+  base.m<-data.frame(out[[1]]$topmetros[[1]])
+  for(i in 2:7){
+  temp<-data.frame(out[[i]]$topmetros[[1]])
+  base.m<- merge(base.m,temp)
+  }
+  ideal.m<-prcomp((t(log(base.m[,2:8]+1))))
+  plot(ideal.m$rotation[,1:2])
+  
+  city<-data.frame(base.m[,1],ideal.m$rotation[,1:2])
+  city<-city[order(city[,2]),]
+
+
+#####################
+## Causal Impact ###
+####################
+library(CausalImpact)
+
+  data<- zoo(cbind(out[[3]]$trend[,3],out[[4]]$trend[,3]), out[[4]]$trend$start)
+  pre.period <- as.Date(c("2007-01-21", "2008-06-08"))
+  post.period <- as.Date(c("2008-06-15", "2008-12-28"))
+  impact <- CausalImpact(data, pre.period, post.period)
+  plot(impact)
+  summary(impact)
+  summary(impact, "report")
+  impact$summary
+
+#############
+## Final Model
+############
+  data<- zoo(cbind(out[[3]]$trend[,3],out[[4]]$trend[,3],
+                   out[[19]]$trend[,3],out[[20]]$trend[,3]), out[[4]]$trend$start)
+  pre.period <- as.Date(c("2007-01-21", "2008-06-08"))
+  post.period <- as.Date(c("2008-06-15", "2008-12-28"))
+  impact <- CausalImpact(data, pre.period, post.period)
+  plot(impact)
+  summary(impact)
+  summary(impact, "report")
+  impact$summary
+```
+
