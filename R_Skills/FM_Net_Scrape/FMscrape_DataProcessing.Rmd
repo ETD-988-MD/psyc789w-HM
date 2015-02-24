@@ -7,6 +7,7 @@ output: html_document
 require(tm)
 require(lubridate)
 require(dplyr)
+require(stringr)
 ```
 
 The initial scrape using the Russian President's Foreign Ministry news releases was a success. The follwing corpus was created, which effectively archives all this material for future use.^[Note: to read in the corpus file, the `tm` package needs to be loaded, else R will read it in as a different file type.]
@@ -105,28 +106,23 @@ leader.data$office.holder <- tolower(leader.data$office.holder)
   other.leaders <- leader.data %>% filter(!country=="Russia")
   other.leaders$office.holder <- str_trim(other.leaders$office.holder) %>% tolower
 
-#extraction will occur along two paths: the brief and the story content.
-#here I will do the briefs since it is more straight forward however 
-#the code can be easily manipulated to utilize the larger content of the story
-  descr <- corpus[[3]]$meta[[3]] %>% as.character #brief
-  descr <- tolower(descr) 
-  descr <- descr %>%  strsplit(.," ") %>% .[[1]]
-#extracting corpus content; to character
-  content <- tm_map(corpus, content_transformer(tolower)) %>%  .[1] %>% inspect
-  content <- content[[1]]$content %>% as.character #actual content of the story
+######################
+#### Breakup names
+#####################
 
-#placeholder object
-s <- descr 
-
-#Breakup names
-  #Target country
+  #sideA country
   for(i in 1:nrow(rus.leaders)) {
     if(length(strsplit(rus.leaders$office.holder[i]," ")[[1]])==3){
       rus.leaders$last.name[i] <- strsplit(rus.leaders$office.holder[i]," ")[[1]][3]
       rus.leaders$middle.name[i] <- strsplit(rus.leaders$office.holder[i]," ")[[1]][2]
       rus.leaders$first.name[i] <- strsplit(rus.leaders$office.holder[i]," ")[[1]][1]
       }}
-  #non-target countries
+  #Now making a merger of the first and last name
+  for(i in 1:nrow(rus.leaders)) {
+    rus.leaders$first.last.name[i] <- paste(rus.leaders$first.name[i],rus.leaders$last.name[i])
+    }
+
+#sideB countries
 for(i in 1:nrow(other.leaders)){
   if(length(strsplit(other.leaders$office.holder[i]," ")[[1]])==8){
     other.leaders$last.name[i] <- strsplit(other.leaders$office.holder[i]," ")[[1]][8]
@@ -184,72 +180,155 @@ for(i in 1:nrow(other.leaders)){
                             other.leaders$middle.name[i] <- NA  
                             }
                           }}}}}}}}
+#Merging First and Last Name
+for(i in 1:nrow(other.leaders)) {
+    other.leaders$first.last.name[i] <- paste(other.leaders$first.name[i],other.leaders$last.name[i])
+    }
+
+########################
+##### Data Extraction
+#######################
+#extraction will occur along two paths: the brief and the story content.
+#here I will do the briefs since it is more straight forward however 
+#the code can be easily manipulated to utilize the larger content of the story
+  descr <- corpus[[3]]$meta[[3]] %>% as.character #brief
+  descr <- tolower(descr) 
+#extracting corpus content; to character
+  content <- tm_map(corpus, content_transformer(tolower)) %>%  .[2] %>% inspect
+  content <- content[[1]]$content %>% as.character #actual content of the story
+
+#placeholder object
+s <- descr 
     
 #isolate sideA actors
-identified.leaders <- NULL
+identified.leaders.sideA <- NULL
 for(j in 1:nrow(rus.leaders)){
-  if(str_detect(s,rus.leaders$last.name[j])){
+  if(str_detect(s,rus.leaders$first.last.name[j])){
     tagged.leaders <- filter(rus.leaders,rus.leaders$office.holder==as.character(rus.leaders$office.holder[j]))} else{next}
-  identified.leaders <- rbind(identified.leaders,tagged.leaders)
+  identified.leaders.sideA <- rbind(identified.leaders.sideA,tagged.leaders)
   }
+identified.leaders.sideA
+
+#isolating sideB actors
+identified.leaders.sideB <- NULL
+for(j in 1:nrow(other.leaders)){
+  if(str_detect(s,other.leaders$first.last.name[j])){
+    tagged.leaders <- filter(other.leaders,other.leaders$office.holder==as.character(other.leaders$office.holder[j]))} else{next}
+  identified.leaders.sideB <- rbind(identified.leaders.sideB,tagged.leaders)
+  }
+identified.leaders.sideB <- unique(identified.leaders.sideB)
+
 #couple sideA with relevant data
 sideA.actor <- NULL
 sideA.country <- NULL
 sideA.actor.title <- NULL
-for(i in 1:nrow(identified.leaders)){
-  sideA.actor[i] <- as.character(identified.leaders$office.holder[i])
-  sideA.country[i] <- as.character(identified.leaders$country[i])
-  sideA.actor.title[i] <- as.character(identified.leaders$office[i])
+for(i in 1:nrow(identified.leaders.sideA)){
+  sideA.actor[i] <- as.character(identified.leaders.sideA$office.holder[i])
+  sideA.country[i] <- as.character(identified.leaders.sideA$country[i])
+  sideA.actor.title[i] <- as.character(identified.leaders.sideA$office[i])
   }
 
-#isolate sideB actors #LEFT OFF HERE!!! 2.18.14
-identified.leaders2 <- NULL
-
-countrys <- other.leaders$country %>% as.character %>% unique 
-for(k in 1:length(countrys)){
-  temp <- other.leaders %>% filter(country==countrys[k])
-  for(j in 1:nrow(temp)){
-    if(!is.na(str_detect(s,temp$last.name[j])) & str_detect(s,temp$last.name[j])){
-      tagged.leaders <- filter(other.leaders,other.leaders$office.holder==as.character(temp$office.holder[j]))} else{next}
-    identified.leaders2 <- rbind(identified.leaders2,tagged.leaders)
-    }
-  tagged.leaders <- NULL
-  }
-identified.leaders2
-
-
-
-for(j in 1:nrow(other.leaders)){
-  
-  if(str_detect(s,as.character(other.leaders$country[j]))){
-    
-    temp.sub.other.leaders <- other.leaders %>% filter(country==country[j])
-    
-    for(p in 1:nrow(temp.sub.other.leaders)){
-      
-      if(str_detect(s,temp.sub.other.leaders$last.name[p]) | str_detect(s,temp.sub.other.leaders$first.name[p])){
-        tagged.leaders <- temp.sub.other.leaders %>% filter(as.character(temp.sub.other.leaders$office.holder)==as.character(temp.sub.other.leaders$office.holder[p])) 
-        identified.leaders2 <- rbind(identified.leaders2,tagged.leaders)
-        } else{next}
-      
-}  
-} 
-temp.sub.other.leaders <- NULL }
-
-!is.na(str_detect(s,as.character(temp.sub.other.leaders$last.name[p]))) & 
-
-
-#couple with relevant data re sideB actors
-for(i in 1:nrow(identified.leaders2)){
-  sideB.actor[i] <- as.character(identified.leaders2$office.holder[i])
-  sideb.country[i] <- as.character(identified.leaders2$country[i])
-  sideB.actor.title[i] <- as.character(identified.leaders2$office[i])
+#couple sideB with relevant data
+sideB.actor <- NULL
+sideB.country <- NULL
+sideB.actor.title <- NULL
+for(i in 1:nrow(identified.leaders.sideB)){
+  sideB.actor[i] <- as.character(identified.leaders.sideB$office.holder[i])
+  sideB.country[i] <- as.character(identified.leaders.sideB$country[i])
+  sideB.actor.title[i] <- as.character(identified.leaders.sideB$office[i])
   }
 
 #Data frame for this iteration
-temp.data <- data.frame(sideA.actortitle=title,sideA.actor=sideA.actor,sideA.country=sideA.country)
-
+sideB.data <- data.frame(sideB.actor.title,sideB.actor,sideB.country)
+sideA.data <- data.frame(sideA.actor.title=rep(sideA.actor.title,nrow(sideB.data)),sideA.actor=rep(sideA.actor,nrow(sideB.data)),sideA.country=rep(sideA.country,nrow(sideB.data)))
+temp.data <- cbind(sideA.data,sideB.data)
+temp.data$meeting.type <- ifelse(nrow(sideB.data)>=2,"Multilateral","Bilateral")
+temp.data$type.of.meeting <- ifelse(str_detect(corpus[[3]]$meta[[4]] %>% tolower,"telephone"),"Telephone",ifelse(str_detect(corpus[[3]]$meta[[4]] %>% tolower,"meeting"),"Meeting",NA))
+temp.data$date <- corpus[[3]]$meta[[8]] %>% as.Date %>% format(.,"%m-%d-%Y")
+temp.data$origin <- corpus[[3]]$meta[[7]]
+temp.data$origin.source <- corpus[[3]]$meta[[1]]
+temp.data$corpus.location <- corpus[[3]]$meta[[5]]
+View(temp.data)
 ```
+> Note: As the data demonstrates, there is no discriminating against particular matches; thus, Francois Hollande (the current president of France) holds the same name as a head of state in Andorra. For now, I will let these types of issues persist before building smarter code to more efficiently discriminate between which leader we are referring to. All in all, I want to see who the issue persists on the large scale. 
+
+The dictionary approach proved successful on the small scale. Now, let's upscale it to process the entire corpus. 
+```{r}
+#Mechanizing the process
+for(i in 1:length(corpus)){
+  if(is.na(corpus[[i]]$meta[[3]])){
+    content <- tm_map(corpus, content_transformer(tolower)) %>%  .[i]
+    s <- content[[i]]$content %>% as.character
+  } else{
+    s <- corpus[[i]]$meta[[3]] %>% as.character %>% tolower()
+  }
+}
+
+
+#placeholder object
+s <- descr 
+    
+#isolate sideA actors
+identified.leaders.sideA <- NULL
+for(j in 1:nrow(rus.leaders)){
+  if(str_detect(s,rus.leaders$first.last.name[j])){
+    tagged.leaders <- filter(rus.leaders,rus.leaders$office.holder==as.character(rus.leaders$office.holder[j]))} else{next}
+  identified.leaders.sideA <- rbind(identified.leaders.sideA,tagged.leaders)
+  }
+identified.leaders.sideA
+
+#isolating sideB actors
+identified.leaders.sideB <- NULL
+for(j in 1:nrow(other.leaders)){
+  if(str_detect(s,other.leaders$first.last.name[j])){
+    tagged.leaders <- filter(other.leaders,other.leaders$office.holder==as.character(other.leaders$office.holder[j]))} else{next}
+  identified.leaders.sideB <- rbind(identified.leaders.sideB,tagged.leaders)
+  }
+identified.leaders.sideB <- unique(identified.leaders.sideB)
+
+#couple sideA with relevant data
+sideA.actor <- NULL
+sideA.country <- NULL
+sideA.actor.title <- NULL
+for(i in 1:nrow(identified.leaders.sideA)){
+  sideA.actor[i] <- as.character(identified.leaders.sideA$office.holder[i])
+  sideA.country[i] <- as.character(identified.leaders.sideA$country[i])
+  sideA.actor.title[i] <- as.character(identified.leaders.sideA$office[i])
+  }
+
+#couple sideB with relevant data
+sideB.actor <- NULL
+sideB.country <- NULL
+sideB.actor.title <- NULL
+for(i in 1:nrow(identified.leaders.sideB)){
+  sideB.actor[i] <- as.character(identified.leaders.sideB$office.holder[i])
+  sideB.country[i] <- as.character(identified.leaders.sideB$country[i])
+  sideB.actor.title[i] <- as.character(identified.leaders.sideB$office[i])
+  }
+
+#Data frame for this iteration
+sideB.data <- data.frame(sideB.actor.title,sideB.actor,sideB.country)
+sideA.data <- data.frame(sideA.actor.title=rep(sideA.actor.title,nrow(sideB.data)),sideA.actor=rep(sideA.actor,nrow(sideB.data)),sideA.country=rep(sideA.country,nrow(sideB.data)))
+temp.data <- cbind(sideA.data,sideB.data)
+temp.data$meeting.type <- ifelse(nrow(sideB.data)>=2,"Multilateral","Bilateral")
+temp.data$type.of.meeting <- ifelse(str_detect(corpus[[3]]$meta[[4]] %>% tolower,"telephone"),"Telephone",ifelse(str_detect(corpus[[3]]$meta[[4]] %>% tolower,"meeting"),"Meeting",NA))
+temp.data$date <- corpus[[3]]$meta[[8]] %>% as.Date %>% format(.,"%m-%d-%Y")
+temp.data$origin <- corpus[[3]]$meta[[7]]
+temp.data$origin.source <- corpus[[3]]$meta[[1]]
+temp.data$corpus.location <- corpus[[3]]$meta[[5]]
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### Text Correlations
 ```{r}
@@ -305,13 +384,4 @@ DocumentTermMatrix(
 
 findAssocs(DocumentTermMatrix(as.String(brief) %>% VectorSource(.) %>% VCorpus),scan_tokenizer(rus.leaders$last.name),.5)
 ```
-
-
-
-
-
-
-
-
-
 
