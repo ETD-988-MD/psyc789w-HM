@@ -1,0 +1,45 @@
+---
+title: "Utilizing Python and R together"
+output: html_document
+---
+
+This is an initial look into using Python and R languages together. Python offers strong langauge processing, where as R is easier to control, offers and eclectic and powerful range of programs, and is in general, more utilizable as a social data scientist.
+
+See [here](http://cran.r-project.org/web/packages/rPython/rPython.pdf) for the specifics on the `rPython` package.
+```{r}
+install.packages("rPython")
+require(rPython)
+
+#Application
+a <- 1:4
+python.assign( "a", a ) 
+python.exec( "b = len( a )" )
+python.get( "b" )
+
+#to execute a Python script from R
+python.load()
+```
+
+#### Test one 
+Here is a simple python script that I put together and saved into this working directory. Here I will run it and then call it into R. 
+```{r}
+python.load("R_Py/test1.py")
+test1 <- python.get("the_goods") #Here is the basic data
+test2 <- python.get("string_1") #Here is a string
+x <- python.call("fun_1",10) 
+
+#can we build an R compliant function from this?
+fun_1 <- function(x){
+  output = python.call("fun_1",x)
+  return(output)
+}
+fun_1(56) #beautiful
+
+
+#Created a simple dictionary in python...now passing it over
+python.load("R_Py/test2.py")
+test3 <- python.get("my_dict")
+test3
+str(test3)
+```
+
