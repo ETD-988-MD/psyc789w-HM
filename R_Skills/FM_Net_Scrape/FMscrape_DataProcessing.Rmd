@@ -333,6 +333,8 @@ for(k in 1:length(corpus)){
   output.data <- rbind(output.data,temp.data)
   temp.data <- NULL
   }
+
+write.csv(output.data,paste0("Data/fm_network_dataset.v.",format(Sys.Date(),"%d.%m.%y")))
 ```
 
 
