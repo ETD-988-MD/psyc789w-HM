@@ -96,6 +96,10 @@ The natural language processing is still limited in the types of information tha
 leader.data <- read.csv('Data/CIA_World_Leaders_Data_01.28.15.csv')
 head(leader.data) 
 
+#Need to manually add the US President at the moment 2.26.15
+leader.data$X <- NULL
+leader.data <- rbind(leader.data,data.frame(country="United States of America",country.code="US",office="Pres.",office.holder="Barack Obama",date.last.updated="NA",date.retrieved="NA"))
+
 #lowercasing the leader names
 leader.data$office.holder <- tolower(leader.data$office.holder)
 
@@ -260,8 +264,7 @@ other.leaders <- other.leaders[-100,]
 
 #Mechanizing the process
 output.data <- NULL
-length(corpus)
-for(k in 1:10){
+for(k in 1:length(corpus)){
   if(is.na(corpus[[k]]$meta[[3]])){
     content <- tm_map(corpus, content_transformer(tolower)) %>%  .[k]
     s <- content[[1]]$content %>% as.character
@@ -275,7 +278,6 @@ for(k in 1:10){
       tagged.leaders <- filter(rus.leaders,rus.leaders$office.holder==as.character(rus.leaders$office.holder[j]))} else{next}
     identified.leaders.sideA <- rbind(identified.leaders.sideA,tagged.leaders)
     }
-  identified.leaders.sideA
   
   #isolating sideB actors
   identified.leaders.sideB <- NULL

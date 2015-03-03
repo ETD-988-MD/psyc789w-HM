@@ -20,8 +20,7 @@ Preliminary scan on the site material that Michael is looking to extract from Fo
 ----
 
 ### Chief of State and Cabinet Scraper
-
-First, to build the simple version just focusing on Afghanistan. 
+ 
 ```{r}
 require(rvest)
 require(dplyr)
@@ -76,6 +75,17 @@ tail(leader.data)
 ```
 
 The loop retrieved a consistent and reliable list of Chiefs of State and their respective cabinets with appropriate date metadata and retrieval time stamps. Thus completing part 1 of the exercise.
+
+This data does not include US actors, however. So we need to perform a seperate scrape for this. 
+```{r}
+#Data from the White House re current cabinet of the United States. 
+us.data <- data.frame(country=NA,country.code=NA,office=NA,office.holder=NA,date.last.updated=NA,date.retrieved=NA)
+
+office <- html("http://www.whitehouse.gov/administration/cabinet") %>% html_nodes(.,"strong") %>% html_text()
+office.holder <- html("http://www.whitehouse.gov/administration/cabinet") %>% html_nodes(.,"div p") %>% html_text()
+
+```
+
 
 ```{r, eval=F}
 #Saving time stamped version of the data 
