@@ -1,5 +1,5 @@
 import nltk
-sentence = "Vladimir Putin is an asshole in Russia. But Barak Obama is okay."
+sentence = "Vladimir Putin is an asshole in Russia. But Barack Obama is okay."
 tokens = nltk.word_tokenize(sentence)
 tagged = nltk.pos_tag(tokens)
 print tagged #Here we are breaking up main features of the sentence into their appropriate forms. 
@@ -27,3 +27,4 @@ for i in range(0,len(entities)):
 	elif parsed[i][2] == "I-PERSON" and parsed[i+1][2] == "B-PERSON":
 		print parsed[i][0] + " " + parsed[i+1][0]
 #Success
+
