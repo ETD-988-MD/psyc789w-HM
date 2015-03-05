@@ -10,7 +10,7 @@ txt_ex <- function(x){
 }
 
 pdf <- "/Users/Ericdunford/Desktop/psyc789w-HM/test.pdf" 
-text <- txt_ex(pdf) %>% str_trim()
+text <- txt_ex(pdf) %>% gsub("[.]","",.)
 class(text) 
 text
 # Still needs some processing, but it works!
