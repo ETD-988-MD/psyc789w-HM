@@ -43,7 +43,7 @@ brief <- as.String(corpus[[2]]$meta[[3]]) # brief
 #annotators
 word_ann <- Maxent_Word_Token_Annotator()
 sent_ann <- Maxent_Sent_Token_Annotator()
-person_ann <- Maxent_Entity_Annotator(kind = "person",model="nl-ner-person.bin")
+person_ann <- Maxent_Entity_Annotator(kind = "person")
 location_ann <- Maxent_Entity_Annotator(kind = "location")
 organization_ann <- Maxent_Entity_Annotator(kind = "organization")
 

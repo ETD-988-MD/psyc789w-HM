@@ -24,16 +24,16 @@ test1 = "Vladimir Putin had a telephone conversation with Federal Chancellor of 
 
 
 #debugging --- but still in progress
-	import nltk
-	text = test1
-	output = []
-	tokens = nltk.word_tokenize(text)
-	tagged = nltk.pos_tag(tokens)
-	for i in range(0,len(tagged)):
-		if tagged[i][1] == "NNP":
-			temp = tagged[i][0]	
-			output.append(temp)
-	print output
+import nltk
+text = test1
+output = []
+tokens = nltk.word_tokenize(text)
+tagged = nltk.pos_tag(tokens)
+for i in range(0,len(tagged)):
+	if tagged[i][1] == "NNP":
+		temp = tagged[i][0]	
+		output.append(temp)
+print output
 
 #entities = nltk.chunk.ne_chunk(nltk.pos_tag(output))
 #parsed = nltk.chunk.tree2conlltags(entities)
