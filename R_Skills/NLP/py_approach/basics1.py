@@ -27,4 +27,35 @@ for i in range(0,len(entities)):
 	elif parsed[i][2] == "I-PERSON" and parsed[i+1][2] == "B-PERSON":
 		print parsed[i][0] + " " + parsed[i+1][0]
 #Success
+#-----------------------------------------
+
+test1 = "Vladimir Putin had a telephone conversation with Federal Chancellor of Germany Angela Merkel, President of the French Republic Francois Hollande and President of Ukraine Petro Poroshenko. This was where Vladimir lived."
+#More testing
+#sent = nltk.sent_tokenize(test1) #The sentence distinction appears unnecessary 
+tokens = nltk.word_tokenize(test1)
+tagged = nltk.pos_tag(tokens)
+entities = nltk.ne_chunk(tagged)
+parsed = nltk.chunk.tree2conlltags(entities)
+print parsed
+
+
+nltk.sem.extract('ORG', 'LOC', test1,corpus='ieer')
+	print nltk.sem.rtuple(rel)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

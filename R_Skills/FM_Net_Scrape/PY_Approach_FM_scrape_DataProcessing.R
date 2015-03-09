@@ -46,12 +46,26 @@ load("RU_Pres_corpus_02.17.15_total.no:2600.Rdata")
 
 descr <- corpus[[4]]$meta[[3]] %>% as.character
 
+#### Specifying Python Wrappers ####
+
 # Py Proper Noun Extractor
 pn_extractor <- function(x){
   if(is.character(x)){
     require(rPython)
     python.load("R_Skills/NLP/py_approach/Applications/pn_extractor2.py")
     output = python.call("pn_extractor2",x)
+    return(output)
+  } else {
+    warning("This is not a character. Fix that!")
+  }
+}
+
+# Py Verb And Noun Extractor
+vb_extractor <- function(x){
+  if(is.character(x)){
+    require(rPython)
+    python.load("R_Skills/NLP/py_approach/Applications/pn_extractor2.py")
+    output = python.call("vb_extractor",x)
     return(output)
   } else {
     warning("This is not a character. Fix that!")
@@ -70,7 +84,7 @@ fuzzy <- function(text1,text2){
   }
 }
 
-# Pattern Extraction from character string
+# Pattern Extraction from character string -- This isn't really useful
 pat_extract <- function(text,choices){
   if(is.character(text) & is.character(choices)){
     require(rPython)
@@ -81,8 +95,7 @@ pat_extract <- function(text,choices){
     warning("This is not a character. Fix that!")
   }
 }
-#Debugging 
-  #pat_extract(s[1],temp.data$last.name)
+
 
 #removing the the other Hollande, not of France but of Andorra...
 #I will figure out a better solution to this later.
@@ -93,15 +106,27 @@ leader.data <- leader.data[-100,]
 ############ PROCESSOR ################
 ### Identifying the relavant actors ###
 #--------------------------------------
-output.data <- NULL
+
 length(corpus)
+# For testing
+k = 1
+h = 1
+j= 1
+
+
+output.data <- NULL
 for(k in 1:3){
-  if(is.na(corpus[[k]]$meta[[3]])){
-    text <- corpus[[k]]$content %>% as.character
-  } else{
-    text <- corpus[[k]]$meta[[3]] %>% as.character 
-  }
-  s <- pn_extractor(text)
+#   if(is.na(corpus[[k]]$meta[[3]])){
+#     text1 <- corpus[[k]]$content %>% as.character #Content material
+#   } else{
+#     text2 <- corpus[[k]]$meta[[3]] %>% as.character #Description
+#   }
+  text1 <- corpus[[k]]$content %>% as.character #Content material
+  text2 <- corpus[[k]]$meta[[3]] %>% as.character #Description
+  text3 <- corpus[[k]]$meta[[4]] %>% as.character #Headline
+  text <- paste(text1,text2,text3) #Smash all information points together
+  s <- pn_extractor(text) %>% unique #Proper nouns
+  vn <- vb_extractor(text) %>% unique # Verbs and Nouns
   identified.leaders.sideA <- NULL
   temp.data <- leader.data %>% filter(country == "Russia")
   for(h in 1:length(s)){
