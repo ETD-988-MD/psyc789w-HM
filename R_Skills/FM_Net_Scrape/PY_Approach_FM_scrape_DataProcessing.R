@@ -7,6 +7,9 @@ require(lubridate)
 require(dplyr)
 require(stringr)
 
+#Loading RU_Pres corpus
+load("RU_Pres_corpus_02.17.15_total.no:2600.Rdata")
+
 #---------------------------------
 ## Processing World Leader Data
 #---------------------------------
@@ -49,24 +52,36 @@ descr <- corpus[[4]]$meta[[3]] %>% as.character
 #### Specifying Python Wrappers ####
 
 # Py Proper Noun Extractor
-pn_extractor <- function(x){
-  if(is.character(x)){
-    require(rPython)
-    python.load("R_Skills/NLP/py_approach/Applications/pn_extractor2.py")
-    output = python.call("pn_extractor2",x)
-    return(output)
-  } else {
-    warning("This is not a character. Fix that!")
-  }
-}
+    pn_extractor <- function(x){
+      if(is.character(x)){
+        require(rPython)
+        python.load("R_Skills/NLP/py_approach/Applications/pn_extractor2.py")
+        output = python.call("pn_extractor2",x)
+        return(output)
+      } else {
+        warning("This is not a character. Fix that!")
+      }
+    }
 
 # Py Verb And Noun Extractor
-vb_extractor <- function(x){
-  if(is.character(x)){
+    vb_extractor <- function(x){
+      if(is.character(x)){
+        require(rPython)
+        python.load("R_Skills/NLP/py_approach/Applications/pn_extractor2.py")
+        output = python.call("vb_extractor",x)
+        return(output)
+      } else {
+        warning("This is not a character. Fix that!")
+      }
+    }
+
+# Stanford Algorithm NL processors
+person_parser <- function(text){
+  if(is.character(text)){
     require(rPython)
-    python.load("R_Skills/NLP/py_approach/Applications/pn_extractor2.py")
-    output = python.call("vb_extractor",x)
-    return(output)
+    python.load("R_Skills/NLP/py_approach/Applications/stanford_nlp_extractors.py")
+    output = python.call("stanford_person_extractor",text)
+    return(output) #Using a matching correlation, it extracts a correlated term.
   } else {
     warning("This is not a character. Fix that!")
   }
@@ -96,7 +111,6 @@ pat_extract <- function(text,choices){
   }
 }
 
-
 #removing the the other Hollande, not of France but of Andorra...
 #I will figure out a better solution to this later.
 leader.data[leader.data$country=="Andorra",][1,] 
@@ -109,10 +123,9 @@ leader.data <- leader.data[-100,]
 
 length(corpus)
 # For testing
-k = 1
+k = 2
 h = 1
 j= 1
-
 
 output.data <- NULL
 for(k in 1:3){
@@ -121,31 +134,34 @@ for(k in 1:3){
 #   } else{
 #     text2 <- corpus[[k]]$meta[[3]] %>% as.character #Description
 #   }
-  text1 <- corpus[[k]]$content %>% as.character #Content material
-  text2 <- corpus[[k]]$meta[[3]] %>% as.character #Description
-  text3 <- corpus[[k]]$meta[[4]] %>% as.character #Headline
-  text <- paste(text1,text2,text3) #Smash all information points together
-  s <- pn_extractor(text) %>% unique #Proper nouns
-  vn <- vb_extractor(text) %>% unique # Verbs and Nouns
+  text <- paste(corpus[[k]]$meta[3],corpus[[k]]$content,"") %>% 
+    removePunctuation(.,preserve_intra_word_dashes = T) #Smash all information points together
+  s <- try(person_parser(text),silent=T) %>% unique #Name Extractor
+        #Cleaning residual issues
+        for(f in 1:length(s)){
+          if(str_detect(s[f],"Director")){s[f] <- gsub("Director","",s[f]) %>% str_trim()}
+        }
+  loc <- try(loc_parser(text),silent=T) %>% unique #Locations mentioned
+  org <- try(org_parser(text),silent=T) %>% unique #organizations mentioned
+  vn <- try(vb_extractor(text),silent=T) %>% unique # Verbs and Nouns
   identified.leaders.sideA <- NULL
   temp.data <- leader.data %>% filter(country == "Russia")
   for(h in 1:length(s)){
     for(j in 1:nrow(temp.data)){
-      if(fuzzy(s[h],as.character(tolower(temp.data$last.name[j])))==100){
-        tagged.leaders <- filter(temp.data,temp.data$office.holder==as.character(temp.data$office.holder[j]))
+      if(try(fuzzy(tolower(nameparser(s[h])[3]),as.character(tolower(temp.data$last.name[j]))),silent=T)==100){
+        tagged.leaders <- filter(temp.data,temp.data$office.holder==temp.data$office.holder[j])
       } else{next}
-      identified.leaders.sideA <- rbind(identified.leaders.sideA,tagged.leaders)
+      identified.leaders.sideA <- rbind(identified.leaders.sideA,tagged.leaders) %>% unique
     }
   }
   identified.leaders.sideB <- NULL
   temp.data <- leader.data %>% filter(!country == "Russia")
   for(h in 1:length(s)){
     for(j in 1:nrow(temp.data)){
-      if(fuzzy(s[h],as.character(tolower(temp.data$last.name[j])))==100){
+      if(try(fuzzy(tolower(nameparser(s[h])[3]),as.character(tolower(temp.data$last.name[j]))),silent=T)==100){
         tagged.leaders <- filter(temp.data,temp.data$office.holder==as.character(temp.data$office.holder[j]))
       } else{next}
       identified.leaders.sideB <- rbind(identified.leaders.sideB,tagged.leaders)
-      
     }
   }
   

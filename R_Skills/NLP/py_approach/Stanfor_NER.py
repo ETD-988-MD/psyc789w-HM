@@ -9,6 +9,7 @@ st = NERTagger('/Users/Ericdunford/Desktop/psyc789w-HM/R_Skills/NLP/stanford-ner
 test1 = "Vladimir Putin had a telephone conversation with Federal Chancellor of Germany Angela Merkel, President of the French Republic Francois Hollande and President of Ukraine Petro Poroshenko. This was where Vladimir lived."
 
 output = st.tag(test1.split())
+print output
 #Partialling out individual persons
 for i in range(0,len(output)):
 	if output[i][1] == "PERSON" and output[i+1][1] == "PERSON":
