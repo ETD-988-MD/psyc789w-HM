@@ -9,7 +9,7 @@ output: html_document
 * Useful source for the `ggmap` package can be found [here]("https://www.nceas.ucsb.edu/~frazier/RSpatialGuides/ggmap/ggmapCheatsheet.pdf")
     + Using the `ggmap` package, you can quickly geocode a coordinate using `geocode()`, e.g. `geocode("University of Maryland")`
 
-### Reading "shapefiles" into R - e.g. `.shp` or `.shx`
+### Reading "shapefiles" into R - e.g. `.shp` or `.shx` 
 
 See [here]("http://www.r-bloggers.com/shapefiles-in-r/") for useful tutorial materials. 
 

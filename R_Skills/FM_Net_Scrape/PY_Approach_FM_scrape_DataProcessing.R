@@ -10,9 +10,9 @@ require(stringr)
 #Loading RU_Pres corpus
 load("RU_Pres_corpus_02.17.15_total.no:2600.Rdata")
 
-#---------------------------------
-## Processing World Leader Data
-#---------------------------------
+#----------------------------------
+## Processing World Leader Data ##
+#----------------------------------
 
 leader.data <- read.csv('Data/CIA_World_Leaders_Data_01.28.15.csv')
 #Need to manually add the US President at the moment 
@@ -141,8 +141,8 @@ for(k in 1:3){
         for(f in 1:length(s)){
           if(str_detect(s[f],"Director")){s[f] <- gsub("Director","",s[f]) %>% str_trim()}
         }
-  loc <- try(loc_parser(text),silent=T) %>% unique #Locations mentioned
-  org <- try(org_parser(text),silent=T) %>% unique #organizations mentioned
+  loc <- try(loc_parser(text),silent=T) %>% unique # Locations mentioned
+  org <- try(org_parser(text),silent=T) %>% unique # organizations mentioned
   vn <- try(vb_extractor(text),silent=T) %>% unique # Verbs and Nouns
   identified.leaders.sideA <- NULL
   temp.data <- leader.data %>% filter(country == "Russia")
@@ -209,5 +209,4 @@ for(k in 1:3){
   output.data <- rbind(output.data,temp.data)
   temp.data <- NULL
 }
-  
 

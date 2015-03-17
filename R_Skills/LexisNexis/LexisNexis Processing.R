@@ -17,7 +17,9 @@ file <- system.file("R_Skills/LexisNexis/lnquery_anti-milosevic_2015-03-15_14-33
 material <- Corpus(LexisNexisSource(file, encoding = "UTF-8"))
 
 source <- LexisNexisSource("R_Skills/LexisNexis/lnquery_anti-milosevic_2015-03-15_14-33.HTML")
+str(source)
 corpus1 <- Corpus(source, readerControl = list(language = NA))
 
-headlines <- html("R_Skills/LexisNexis/lnquery_anti-milosevic_2015-03-15_14-33.HTML") %>% html_nodes("p") %>% html_text()
+headlines <- xml("R_Skills/LexisNexis/lnquery_anti-milosevic_2015-03-15_14-33.HTML") %>%xml_nodes("p") %>% xml_text()
 headlines
+source <- LexisNexisSource(headlines)

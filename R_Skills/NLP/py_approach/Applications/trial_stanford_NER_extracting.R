@@ -43,8 +43,8 @@ text <- paste(corpus[[k]]$meta[3],corpus[[k]]$meta[4],corpus[[k]]$content,"") %>
 text <- "The Woman's Rights Movement was a strong 
 contender and an interest group that had to be dealt with. 
 Barack Obama and his cabinet cheif, Jerry Walters, both saw the potential 
-in utilizing this voting group. Upon returning from Israel, 
-they went to the caucus in Iowa. Ez-E says fuck the police."
+in utilizing this voting group. Upon returning Israel, 
+they went to the caucus Iowa. EzE says fuck the police."
 text <- text %>% removePunctuation(.,preserve_intra_word_dashes = T)
 
 person_parser(text) %>% unique
