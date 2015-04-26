@@ -15,12 +15,14 @@ def stanford_person_extractor(text):
 	output = []
 	#Partialling out individuals
 	for i in range(0,len(tagged)):
-		if tagged[i-1][1] != "PERSON" and tagged[i][1] == "PERSON" and tagged[i+1][1] == "PERSON" and tagged[i+2][1] == "PERSON":
+		if tagged[i-1][1] != "PERSON" and tagged[i][1] == "PERSON" and tagged[i+1][1] == "PERSON" and tagged[i+2][1] == "PERSON" and tagged[i+3][1] != "PERSON":
 			output.append(tagged[i][0] + " " + tagged[i+1][0] + " " + tagged[i+2][0])
-		if tagged[i-1][1] != "PERSON" and tagged[i][1] == "PERSON" and tagged[i+1][1] == "PERSON":
+		if tagged[i-1][1] != "PERSON" and tagged[i][1] == "PERSON" and tagged[i+1][1] == "PERSON" and tagged[i+2][1] != "PERSON":
 			output.append(tagged[i][0] + " " + tagged[i+1][0])
-		if tagged[i-1][1] != "PERSON" and tagged[i][1] == "PERSON"  and tagged[i+1][1] != "PERSON":
-			output.append(tagged[i][0])
+		if tagged[i][1] == "PERSON" and tagged[i+1][1] == "PERSON" and tagged[i+1][1] != "PERSON":
+			output.append(tagged[i][0] + " " + tagged[i+1][0])
+		#if tagged[i-1][1] != "PERSON" and tagged[i][1] == "PERSON"  and tagged[i+1][1] != "PERSON":
+			#output.append(tagged[i][0])
 	return output
 
 #-----------------------------------------------------------

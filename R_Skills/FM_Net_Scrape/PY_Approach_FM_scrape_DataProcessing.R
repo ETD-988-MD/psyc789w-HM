@@ -44,9 +44,6 @@ for(i in 1:nrow(leader.data)){
 ## Processing Scrape
 #---------------------------------
 
-#Importing Scrape Corpus
-load("RU_Pres_corpus_02.17.15_total.no:2600.Rdata")
-
 descr <- corpus[[4]]$meta[[3]] %>% as.character
 
 #### Specifying Python Wrappers ####
@@ -100,16 +97,16 @@ fuzzy <- function(text1,text2){
 }
 
 # Pattern Extraction from character string -- This isn't really useful
-pat_extract <- function(text,choices){
-  if(is.character(text) & is.character(choices)){
-    require(rPython)
-    python.load("R_Skills/NLP/py_approach/Applications/Fuzzy_Character_Matching.py")
-    output = python.call("pat_extract",text,choices)
-    return(output) #Using a matching correlation, it extracts a correlated term.
-  } else {
-    warning("This is not a character. Fix that!")
-  }
-}
+# pat_extract <- function(text,choices){
+#   if(is.character(text) & is.character(choices)){
+#     require(rPython)
+#     python.load("R_Skills/NLP/py_approach/Applications/Fuzzy_Character_Matching.py")
+#     output = python.call("pat_extract",text,choices)
+#     return(output) #Using a matching correlation, it extracts a correlated term.
+#   } else {
+#     warning("This is not a character. Fix that!")
+#   }
+# }
 
 #removing the the other Hollande, not of France but of Andorra...
 #I will figure out a better solution to this later.
@@ -135,7 +132,7 @@ for(k in 1:3){
 #     text2 <- corpus[[k]]$meta[[3]] %>% as.character #Description
 #   }
   text <- paste(corpus[[k]]$meta[3],corpus[[k]]$content,"") %>% 
-    removePunctuation(.,preserve_intra_word_dashes = T) #Smash all information points together
+    removePunctuation(.,preserve_intra_word_dashes = T) %>% str_trim()#Smash all information points together
   s <- try(person_parser(text),silent=T) %>% unique #Name Extractor
         #Cleaning residual issues
         for(f in 1:length(s)){
