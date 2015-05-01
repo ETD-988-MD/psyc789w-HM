@@ -1,0 +1,33 @@
+---
+title: "Covariance Matrix"
+author: "Eric Dunford"
+date: "April 27, 2015"
+output: pdf_document
+---
+
+This is a walk through about how to calculate the covariance matrix of a model. First, I'm going to use data inherent to R.
+```{r}
+#Using the "Women" data
+data <- women
+summary(women)
+```
+
+#Variance
+To find the variance, we calculate the sum of the squared difference between x and its mean^[Why square the sum of the differences? Because we are going to generate negative and positive values that will cancel each other out, throwing off our estimation. Squaring the term gets us around this issue], over the number of observations we are observing (correcting for the degrees of freedom^[insert powner quote]).
+
+Here is the equation for variance. 
+
+$$ var(x) = \frac{\sum x - \bar{x}}{n-1}   $$
+
+```{r}
+#Calculating variance. 
+my.var <- sum((data$weight-mean(data$weight))^2)/(length(data$weight)-1) #My calculation
+
+R.var <- var(data$weight) #R's calculation 
+
+paste0("My calculation of variance ",my.var," and R's ",R.var)
+```
+
+#Covariance
+Covariance is a measure of how changes in one variable are associated with changes in a second variable. Specifically, covariance measures the degree to which two variables are linearly associated. However, it is also often used informally as a general measure of how monotonically related two variables are. 
+

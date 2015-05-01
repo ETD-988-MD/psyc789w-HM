@@ -316,3 +316,6 @@ WD <- output.data
         
     #4. Overcome systemic misses
         View(issue.list)
+
+data.compiled <- WD
+# save(data.compiled,issue.list,file="Data/FM_Scrape_Compiled_Data_4.26.2015.Rdata")
